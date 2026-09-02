@@ -1,0 +1,40 @@
+# ai — 闲置项目归档仓
+
+> 定位：一个会话生成一个单页 App 的一次性产物，全部收敛进一个仓，长期只读。
+
+## 规则
+- 一个顶层目录 = 一个原仓；目录名 = 原仓名（含 `-0517`）。
+- 每个目录内 `README.ARCHIVE.md` 是身份证：源仓 URL、基线分支+SHA、分支台账、PR/submodule/孤儿抢救说明。
+- 目录内保留原仓 `.gitignore` 等原生文件；根 `.gitignore` 不存在（避免父级规则吞子目录内容）。
+- 原仓历史不做进归档仓；这里保存的是**内容并集快照**，原仓仍由你日后处置（建议 Archive）。
+
+## 目录总表（21 仓）
+| 目录 | 原仓 | 末次提交 | files | 内容 | 一句话 |
+|---|---|---|---|---|---|
+| `-0517` | `-0517` | 2026-05-17 `87a336a` | 21 | 21 files，目录名以 `-` 开头 | 5/17 单页 |
+| `0530-planck` | `0530-planck` | 2026-05-30 `8acde3d` | 25 | 25 files，10 jpg 撑体积 | 普朗克/量子单页 |
+| `06112cosmosagentmode` | `06112cosmosagentmode` | 2026-06-12 `c615af4` | 41 | 41 files，9 frag/7 vert three.js 着色器 | Cosmos 着色器页 |
+| `20260524` | `20260524` | 2026-05-24 `e265737` | 31 | 31 files，含 6 jpg | 5/24 图片页 |
+| `202606060606AI` | `202606060606AI` | 2026-06-06 `c995c02` | 42 | 42 files，10 jpg | AI 图片单页 |
+| `Goooodbye_s-g` | `Goooodbye_s-g` | 2026-04-20 `e782081` | 22 | 22 files | 告别单页 |
+| `IELTS20260423scz` | `IELTS20260423scz` | 2026-04-23 `7ced013` | 11 | 单文件 App：`src/App.tsx` 66KB | 雅思学习单页 |
+| `ai` | `ai` | 2026-07-04 `5e4da9c` | 17 | Next+Drizzle，`api/health/route.ts` 149B | 原 ai 仓内容（已迁入 `ai/`） |
+| `claude-cpt` | `claude-cpt` | 2026-07-04 `ada60b7` | 45 | 11 commits，45 files，本批唯一真迭代仓 | Claude CPT 迭代产物 |
+| `dawu-6.1` | `dawu-6.1` | 2026-06-01 `4f3c7c0` | 17 | 单页 | 六一单页 |
+| `gaoshu-6.1` | `gaoshu-6.1` | 2026-06-01 `b575393` | 26 | 16 tsx | 高数 6.1 组件页 |
+| `hogwarts-sorting-hat-quiz` | `hogwarts-sorting-hat-quiz` | 2026-04-20 `2ea9591` | 18 | 18 files，含 `wrangler.jsonc`（PR#1 open） | 学院帽测验 + Cloudflare 配置 |
+| `liangji` | `liangji` | 2026-07-03 `5102faa` | 31 | 31 files | 量级单页 |
+| `physics-exam-1` | `physics-exam-1` | 2026-04-21 `24e9fea` | 11 | App.tsx 50KB | 物理考试练习单页 |
+| `physics-exam-2` | `physics-exam-2` | 2026-04-21 `8737bb6` | 18 | 7 tsx（DraftPad/Evaluation） | 物理考试组件版 |
+| `ryh20260510` | `ryh20260510` | 2026-05-10 `e6e96d7` | 28 | 18 tsx | 五一单页 |
+| `rzyz-2026-gaokaojiayou` | `rzyz-2026-gaokaojiayou` | 2026-05-02 `d01338c` | 15 | 祝福网页，曾主动删除 Galaxy-themed | 高考加油祝福页 |
+| `sectionA-cet6` | `sectionA-cet6` | 2026-06-01 `06832f5` | 20 | 单页 | CET6 Section A 练习 |
+| `tushupdf` | `tushupdf` | 2026-08-13 `9012596` | 4 | 4 files（含 main 空壳 README 另存） | 大二上教材书目核对说明 |
+| `wendang11` | `wendang11` | 2026-08-12 `c239a4f` | 152 | 152 files，54 孤儿文件 + submodule 未解析 | 恋爱大师 · LoveMaster 技能库 |
+| `yimingshengri` | `yimingshengri` | 2026-06-02 `392d7cf` | 37 | 手工成品 23 js + 6 css + `assets/blessing.jpg` 2.17MB | 生日祝福手工成品 |
+
+## 恢复方法
+单个目录恢复成原仓：在该目录外执行其 `README.ARCHIVE.md` 里的 `git subtree add` 一行；找某仓先看 `MANIFEST.md`。
+
+## 布局说明
+原 `ai` 仓自身内容已迁入 **`ai/`**，其余 20 个仓按目录名平铺在根目录。

@@ -1,0 +1,222 @@
+@import "tailwindcss";
+
+:root {
+  --color-silver: #c0c0c0;
+  --color-silver-light: #e8e8e8;
+  --color-silver-dark: #808080;
+  --color-purple: #9d4edd;
+  --color-purple-light: #c77dff;
+  --color-blue: #00d4ff;
+  --color-blue-dark: #0099cc;
+  --color-bg-dark: #0a0a0f;
+  --color-bg-card: #12121a;
+  --color-bg-hover: #1a1a25;
+  --glow-purple: 0 0 20px rgba(157, 78, 221, 0.5);
+  --glow-blue: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-purple) var(--color-bg-dark);
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--color-bg-dark);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-purple);
+  border-radius: 3px;
+}
+
+body {
+  font-family: 'Noto Sans SC', 'Rajdhani', sans-serif;
+  background: var(--color-bg-dark);
+  color: var(--color-silver-light);
+  overflow-x: hidden;
+}
+
+/* Typography */
+.font-display {
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+}
+
+.font-tech {
+  font-family: 'Rajdhani', sans-serif;
+}
+
+/* Glow Effects */
+.glow-text-purple {
+  text-shadow: 0 0 10px var(--color-purple), 0 0 20px var(--color-purple), 0 0 30px var(--color-purple);
+}
+
+.glow-text-blue {
+  text-shadow: 0 0 10px var(--color-blue), 0 0 20px var(--color-blue);
+}
+
+.glow-border-purple {
+  box-shadow: 0 0 10px rgba(157, 78, 221, 0.3), inset 0 0 10px rgba(157, 78, 221, 0.1);
+}
+
+.glow-border-blue {
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.3), inset 0 0 10px rgba(0, 212, 255, 0.1);
+}
+
+/* Gradient backgrounds */
+.bg-gradient-purple-blue {
+  background: linear-gradient(135deg, rgba(157, 78, 221, 0.1) 0%, rgba(0, 212, 255, 0.1) 100%);
+}
+
+.border-gradient {
+  border-image: linear-gradient(135deg, var(--color-purple), var(--color-blue)) 1;
+}
+
+/* Grid pattern background */
+.bg-grid {
+  background-image: 
+    linear-gradient(rgba(157, 78, 221, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(157, 78, 221, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Animated gradient border */
+@keyframes gradient-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animated-border {
+  background: linear-gradient(90deg, var(--color-purple), var(--color-blue), var(--color-purple));
+  background-size: 200% 200%;
+  animation: gradient-rotate 3s ease infinite;
+}
+
+/* Pulse animation */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Scan line effect */
+.scanlines::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.1) 2px,
+    rgba(0, 0, 0, 0.1) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* KaTeX styling */
+.katex {
+  font-size: 1.1em;
+  color: var(--color-silver-light);
+}
+
+.katex-display {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  background: rgba(157, 78, 221, 0.05);
+  border-radius: 8px;
+  border-left: 3px solid var(--color-purple);
+  overflow-x: auto;
+}
+
+/* Card hover effect */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(157, 78, 221, 0.2);
+}
+
+/* Navigation active indicator */
+.nav-active {
+  position: relative;
+}
+
+.nav-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 60%;
+  background: linear-gradient(180deg, var(--color-purple), var(--color-blue));
+  border-radius: 2px;
+}
+
+/* Progress bar */
+.progress-bar {
+  background: linear-gradient(90deg, var(--color-purple), var(--color-blue));
+  transition: width 0.5s ease;
+}
+
+/* Table styling */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+th {
+  background: rgba(157, 78, 221, 0.2);
+  color: var(--color-purple-light);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+}
+
+td, th {
+  border: 1px solid rgba(157, 78, 221, 0.3);
+  padding: 0.75rem 1rem;
+}
+
+tr:hover td {
+  background: rgba(157, 78, 221, 0.1);
+}
+
+/* Selection */
+::selection {
+  background: rgba(157, 78, 221, 0.4);
+  color: white;
+}
+
+/* Fade in animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+/* Slide animations */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.slide-in-right {
+  animation: slideInRight 0.4s ease forwards;
+}

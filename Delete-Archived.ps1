@@ -155,6 +155,43 @@ if (-not $Execute) {
     return
 }
 
+# ---- gh.exe locator ----
+# winget installs gh but does NOT refresh PATH in an already-open shell.
+# So look on PATH, then reload PATH from the registry, then probe the
+# standard install locations.
+function Find-GhExe {
+    $c = Get-Command gh -ErrorAction SilentlyContinue
+    if ($c) { return $c.Source }
+
+    # reload PATH from Machine + User (picks up a fresh winget install)
+    try {
+        $m = [Environment]::GetEnvironmentVariable('Path','Machine')
+        $u = [Environment]::GetEnvironmentVariable('Path','User')
+        $env:Path = ($m, $u | Where-Object { $_ }) -join ';'
+    } catch { }
+    $c = Get-Command gh -ErrorAction SilentlyContinue
+    if ($c) { return $c.Source }
+
+    # NOTE: Join-Path throws on a null base when EAP='Stop', and
+    # ProgramFiles(x86) is absent on some systems -- build paths defensively.
+    $bases = @(
+        @($env:ProgramFiles,            'GitHub CLI\gh.exe'),
+        @(${env:ProgramFiles(x86)},     'GitHub CLI\gh.exe'),
+        @($env:LOCALAPPDATA,            'Programs\GitHub CLI\gh.exe'),
+        @($env:LOCALAPPDATA,            'Microsoft\WinGet\Links\gh.exe'),
+        @($env:ProgramData,             'chocolatey\bin\gh.exe'),
+        @($env:SCOOP,                   'shims\gh.exe'),
+        @($env:USERPROFILE,             'scoop\shims\gh.exe')
+    )
+    foreach ($b in $bases) {
+        $root = $b[0]
+        if (-not $root) { continue }
+        $pth = (($root.TrimEnd('\')) + '\' + $b[1])
+        try { if (Test-Path -LiteralPath $pth) { return $pth } } catch { }
+    }
+    return $null
+}
+
 # ---- 3. resolve credentials BEFORE the countdown ----
 # Decide up front how we will authenticate, so we never waste the 10s wait
 # only to die on a missing token.
@@ -163,12 +200,14 @@ $mode  = $null      # 'gh' or 'api'
 $token = $null
 
 if (-not $UseAPI) {
-    if (Get-Command gh -ErrorAction SilentlyContinue) {
+    $ghExe = Find-GhExe
+    if ($ghExe) {
+        Write-Host ('Found gh: ' + $ghExe) -ForegroundColor DarkGray
         $ghOk = $true
         $eapSave = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            $null = gh auth status 2>&1
+            $null = & $ghExe auth status 2>&1
             if ($LASTEXITCODE -ne 0) { $ghOk = $false }
         } catch { $ghOk = $false }
         $ErrorActionPreference = $eapSave
@@ -176,10 +215,13 @@ if (-not $UseAPI) {
             $mode = 'gh'
             Write-Host 'Auth: gh CLI (logged in).' -ForegroundColor Green
         } else {
-            Write-Warning 'gh CLI found but not logged in. Run:  gh auth login'
+            Write-Warning 'gh CLI found but not logged in.'
+            Write-Host '  Run these two commands, then rerun this script:' -ForegroundColor Yellow
+            Write-Host ('    & "' + $ghExe + '" auth login') -ForegroundColor Yellow
+            Write-Host ('    & "' + $ghExe + '" auth refresh -s delete_repo') -ForegroundColor Yellow
         }
     } else {
-        Write-Warning 'gh CLI not found on this machine.'
+        Write-Warning 'gh CLI not found (not on PATH and not in the standard install folders).'
     }
 }
 
@@ -207,7 +249,8 @@ if (-not $mode) {
         Write-Host ''
         Write-Host 'No credentials available. Nothing was deleted.' -ForegroundColor Red
         Write-Host 'Options:' -ForegroundColor Yellow
-        Write-Host '  1. winget install --id GitHub.cli   then  gh auth login  and rerun' -ForegroundColor Yellow
+        Write-Host '  1. winget install --id GitHub.cli, then OPEN A NEW PowerShell window' -ForegroundColor Yellow
+        Write-Host '     (PATH does not refresh in an existing one), gh auth login, rerun' -ForegroundColor Yellow
         Write-Host '  2. $env:GH_TOKEN = "ghp_xxx"        then  .\Delete-Archived.ps1 -Execute' -ForegroundColor Yellow
         return
     }
@@ -267,7 +310,7 @@ foreach ($repo in $DeleteList) {
     if ($mode -eq 'gh') {
         $eapSave = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
-        $ghOut = (gh repo delete $full --yes 2>&1 | Out-String)
+        $ghOut = (& $ghExe repo delete $full --yes 2>&1 | Out-String)
         $ghCode = $LASTEXITCODE
         $ErrorActionPreference = $eapSave
         if ($ghCode -eq 0) {
@@ -280,7 +323,7 @@ foreach ($repo in $DeleteList) {
                 continue
             }
             Write-Warning ("Delete failed: $full -- " + $ghOut.Trim())
-            Write-Host '   If this is a scope error, run:  gh auth refresh -s delete_repo' -ForegroundColor Yellow
+            Write-Host ('   If this is a scope error, run:  & "' + $ghExe + '" auth refresh -s delete_repo') -ForegroundColor Yellow
             $failList += $repo
         }
     } else {
@@ -316,7 +359,7 @@ foreach ($repo in $DeleteList) {
         # use gh so private repos are checked with real credentials
         $eapSave = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
-        $null = gh api "repos/$Owner/$repo" 2>&1
+        $null = & $ghExe api "repos/$Owner/$repo" 2>&1
         if ($LASTEXITCODE -eq 0) { $exists = $true }
         $ErrorActionPreference = $eapSave
     } else {

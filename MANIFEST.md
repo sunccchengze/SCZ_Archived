@@ -27,3 +27,55 @@
 | `wendang11` | `wendang11` | 3 | main(基线), pullh/2, pullh/1 | 2 | 55 | 152 | 26262157 (25.05 MB) | 是（54 个 PR1 孤儿文件） | PR#1 closed(未并)、PR#2 closed(merged) | 是（skills-library 未物料化，turbine 与 wendang11 均保留） | submodule skills-library 不解析；两仓均不删 |
 | `yiming-wish` | `yiming-wish` | 2 | main(基线), src | 1 | 0 | 4 | 9186 (9.0 KB) | 否 | 无 | 否 | `11` 在 main 被主动删除，仅台账记录，不捞回 |
 | `yimingshengri` | `yimingshengri` | 1 | main(基线) | 0 | 0 | 37 | 3600927 (3.43 MB) | 否 | 无 | 否 | 无 |
+
+---
+
+## 原仓删除记录（2026-09-02 执行）
+
+> 归档完成后已批量删除原仓。删除前逐仓做过 blob OID 校验（466 源文件，diff=0），
+> 且确认 21 个原仓自归档快照后**无任何新提交**（远端 tip 与身份卡基线逐仓相等）。
+
+- **已删除：21 个**，删除后经 GitHub API 独立复核，全部返回 404（确认不存在）。
+- **执行方式**：`Delete-Archived.ps1 -Execute`（gh CLI 模式，`sunccchengze` 本人凭据）。
+- **账实核对**：删除前 34 个仓 → 删除后 **13 个**，恰为受保护清单，无误删。
+
+### 已删除清单（21）
+
+| # | 原仓 | 归档位置 | 备注 |
+|---|---|---|---|
+| 1 | `IELTS20260423scz` | `IELTS20260423scz/` | |
+| 2 | `physics-exam-1` | `physics-exam-1/` | |
+| 3 | `physics-exam-2` | `physics-exam-2/` | |
+| 4 | `rzyz-2026-gaokaojiayou` | `rzyz-2026-gaokaojiayou/` | |
+| 5 | `dawu-6.1` | `dawu-6.1/` | |
+| 6 | `gaoshu-6.1` | `gaoshu-6.1/` | |
+| 7 | `sectionA-cet6` | `sectionA-cet6/` | |
+| 8 | `-0517` | `-0517/` | |
+| 9 | `ryh20260510` | `ryh20260510/` | |
+| 10 | `20260524` | `20260524/` | |
+| 11 | `0530-planck` | `0530-planck/` | |
+| 12 | `liangji` | `liangji/` | |
+| 13 | `202606060606AI` | `202606060606AI/` | |
+| 14 | `06112cosmosagentmode` | `06112cosmosagentmode/` | |
+| 15 | `Goooodbye_s-g` | `Goooodbye_s-g/` | |
+| 16 | `claude-cpt` | `claude-cpt/` | |
+| 17 | `yimingshengri` | `yimingshengri/` | |
+| 18 | `tushupdf` | `tushupdf/` | 2 分支已并集 |
+| 19 | `fengdian001` | —（无目录） | 空仓，0 文件 0 提交，无内容可归档 |
+| 20 | `hogwarts-sorting-hat-quiz` | `hogwarts-sorting-hat-quiz/` | PR#1 已 merged，合并后 main 与归档逐文件一致 |
+| 21 | `yiming-wish` | `yiming-wish/` | `src` 分支为 main 祖先；`11` 于 main 主动删除，未捞回 |
+
+### 保留未删（13）
+
+| 仓 | 理由 |
+|---|---|
+| `ai` | 本归档仓 |
+| `wendang11` | submodule `skills-library` 约 1.2GB / 39,480 文件，超出归档仓容量，未物料化，故原仓保留 |
+| `turbine-blade-ai-platform` | 上述 submodule 的实际来源仓，与 `wendang11` 同进退，一并保留 |
+| `123` | 真实内容在 `arena/01a053b1-123`（30 commits / 105 files），未并入 main，未纳入归档 |
+| `wode` | 仍活跃（`arena/01a0609b-wode`，2026-09-02 仍有提交） |
+| `yiming` | 仍活跃（`arena/01a05c5e-yiming`，25 commits / 53 files） |
+| `zixue2026` `-SKILL-` `-` `notEBooklm-scz` `0824-2026` `sucheng` `wind_farm_viz` | 不在本次归档范围内 |
+
+> 删除不可逆。如需找回某仓内容，见对应目录 `README.ARCHIVE.md` 中的 `git subtree add` 命令，
+> 或直接取用该目录快照。注意：**归档只保留内容快照，原仓的提交历史与 PR 讨论已随删除消失**。

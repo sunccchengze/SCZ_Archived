@@ -37,3 +37,4 @@
 ## 恢复方法
 单个目录恢复成原仓：在该目录外执行其 `README.ARCHIVE.md` 里的 `git subtree add` 一行；找某仓先看 `MANIFEST.md`。
 原 `ai` 仓内容已迁入 `ai/`，其余 21 个仓按目录名平铺在根目录。
+21 个原仓已于 2026-09-02 删除（删前逐仓 blob 校验，删后 API 复核全部 404），明细见 `MANIFEST.md` 末节。

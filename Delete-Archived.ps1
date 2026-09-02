@@ -1,35 +1,36 @@
 <#
 .SYNOPSIS
-  批量删除账号 sunccchengze 下已归档/已核对的闲置仓库（不可逆）。
+  Batch-delete already-archived/idle repos under sunccchengze (irreversible).
 
 .DESCRIPTION
-  默认只做 Dry-Run + 预检，绝不动服务器。
-  加 -Execute 才会真正删除。
+  Default = Dry-Run + local precheck only. Add -Execute to really delete.
 
-  删除清单（21 个）是本次归档已完成、或空仓/已合并/已单独归档的仓库：
-    18 个已完整入档 + fengdian001（空仓） + hogwarts-sorting-hat-quiz（PR#1 已合并且已入档）
-    + yiming-wish（已单独入档）。
+  Delete list (21) = repos already archived in `ai`, plus empty / merged /
+  separately-archived ones:
+    18 archived + fengdian001 (empty) + hogwarts-sorting-hat-quiz (PR#1 merged,
+    content verified identical) + yiming-wish (archived separately).
 
-  ⚠️ 下列仓库是“保护名单”，脚本根本不会删除：
-    ai, wendang11, turbine-blade-ai-platform, 123, wode, yiming, 以及清单外的其它所有仓。
-    wendang11 因 skills-library 子模块（1.2GB / 39,480 文件）超出归档仓上限而未物料化，
-    按当前决定“两个仓都保留”，所以不删。
+  PROTECTED repos are never deleted even if listed:
+    ai, wendang11, turbine-blade-ai-platform, 123, wode, yiming and every
+    repo not in the list. wendang11 is kept because skills-library submodule
+    (~1.2GB / 39,480 files) cannot fit in the archive repo limits; both
+    wendang11 and turbine-blade-ai-platform are intentionally retained.
 
 .PARAMETER Execute
-  加 -Execute 才真正调用 gh / GitHub API 删除；否则只预览。
+  With -Execute, really call gh / GitHub API. Without it, only preview.
 
 .PARAMETER UseAPI
-  跳过 gh，走 GitHub REST API。需要 $env:GH_TOKEN 或 $env:GITHUB_TOKEN。
+  Skip gh and use GitHub REST API. Requires $env:GH_TOKEN or $env:GITHUB_TOKEN.
 
 .PARAMETER Owner
-  默认 sunccchengze。
+  Default sunccchengze.
 
 .PARAMETER ArchivePath
-  ai 归档仓在本机的检出路径。用于预检每个目录里的 README.ARCHIVE.md / TIMESTAMP.md。
-  默认当前目录。
+  Path to local checkout of the `ai` archive repo, used for the precheck of
+  README.ARCHIVE.md / TIMESTAMP.md. Default = current directory.
 
 .PARAMETER SkipPrecheck
-  跳过本地预检（不推荐，仅用于确认知道自己在做什么）。
+  Skip local precheck (not recommended).
 
 .EXAMPLE
   .\Delete-Archived.ps1
@@ -47,7 +48,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# ---- 删除清单（已核对） ----
+# ---- delete list (verified) ----
 $DeleteList = @(
     'IELTS20260423scz',
     'physics-exam-1',
@@ -72,7 +73,7 @@ $DeleteList = @(
     'yiming-wish'
 )
 
-# ---- 保护名单：即使有人误加也绝不删 ----
+# ---- protected repos: never delete even if mistakenly added ----
 $Protected = @(
     'ai',
     'wendang11',
@@ -89,107 +90,104 @@ $Protected = @(
     'wind_farm_viz'
 )
 
-# ---- 防止清单与保护名单冲突 ----
+# ---- sanity check: no overlap between delete list and protected list ----
 foreach ($r in $DeleteList) {
     if ($Protected -contains $r) {
-        throw "错误：'$r' 同时出现在删除清单和保护名单，请先修正脚本后重试。"
+        throw "Error: '$r' is in both DeleteList and Protected. Fix the script first."
     }
 }
 
 Write-Host ''
-Write-Host ('正在使用归档仓路径: ' + $ArchivePath) -ForegroundColor Cyan
-Write-Host ('将要删除的仓库数: ' + $DeleteList.Count) -ForegroundColor Cyan
+Write-Host ('Archive path: ' + $ArchivePath) -ForegroundColor Cyan
+Write-Host ('Repos to delete: ' + $DeleteList.Count) -ForegroundColor Cyan
 
-# ---- 1. 本地预检 ----
+# ---- 1. local precheck ----
 if (-not $SkipPrecheck) {
-    Write-Host '== 预检：归档目录是否已保留身份卡 ==' -ForegroundColor Yellow
+    Write-Host '== Precheck: check identity cards exist ==' -ForegroundColor Yellow
+
     if (-not (Test-Path (Join-Path $ArchivePath '.git'))) {
-        Write-Warning 'ArchivePath 看起来不是 git 仓库目录（找不到 .git）。如果没错可加 -SkipPrecheck。'
+        Write-Warning 'ArchivePath does not look like a git checkout (no .git). If this is expected, use -SkipPrecheck.'
     }
 
     $missing = @()
     foreach ($repo in $DeleteList) {
         if ($repo -eq 'fengdian001') {
-            # 空仓本就没有内容目录，跳过
-            Write-Host ('  - {0,-28} (空仓，无内容目录)' -f $repo) -ForegroundColor DarkGray
+            Write-Host ('  - {0,-28} empty repo, no content dir' -f $repo) -ForegroundColor DarkGray
             continue
         }
-        $dir  = Join-Path $ArchivePath $repo
-        $rd   = Join-Path $dir 'README.ARCHIVE.md'
-        $ts   = Join-Path $dir 'TIMESTAMP.md'
-        $ok   = (Test-Path $dir) -and (Test-Path $rd) -and (Test-Path $ts)
-        if ($ok) {
+        $dir = Join-Path $ArchivePath $repo
+        $rd  = Join-Path $dir 'README.ARCHIVE.md'
+        $ts  = Join-Path $dir 'TIMESTAMP.md'
+        if ((Test-Path $dir) -and (Test-Path $rd) -and (Test-Path $ts)) {
             Write-Host ('  - {0,-28} OK' -f $repo) -ForegroundColor Green
         } else {
-            Write-Host ('  - {0,-28} 缺文件 dir={1} README={2} TIMESTAMP={3}' -f $repo, (Test-Path $dir), (Test-Path $rd), (Test-Path $ts)) -ForegroundColor Red
+            Write-Host ('  - {0,-28} missing (dir={1} README={2} TIMESTAMP={3})' -f $repo, (Test-Path $dir), (Test-Path $rd), (Test-Path $ts)) -ForegroundColor Red
             $missing += $repo
         }
     }
 
     if ($missing.Count -gt 0) {
         Write-Host ''
-        Write-Warning ("以下仓库在本机归档目录中没找到 README.ARCHIVE.md / TIMESTAMP.md：" + ($missing -join ', '))
-        Write-Host '若你已确认仓库已归档、只是本机 checkout 不完全，可加 -SkipPrecheck；否则脚本不继续。' -ForegroundColor Magenta
-        if (-not $Execute) { return }
-        if (-not $SkipPrecheck) { return }   # 无 -SkipPrecheck 时，即便 -Execute 也拒绝删除
+        Write-Warning ('Missing identity cards: ' + ($missing -join ', '))
+        Write-Host 'If you are sure the repos are archived but this checkout is incomplete, add -SkipPrecheck. Otherwise stopping.' -ForegroundColor Magenta
+        if (-not $SkipPrecheck) { return }
     } else {
-        Write-Host '✔ 预检通过（fengdian001 空仓除外）。' -ForegroundColor Green
+        Write-Host 'Precheck passed.' -ForegroundColor Green
     }
 }
 
-# ---- 2. 展示清单 ----
+# ---- 2. show plan ----
 Write-Host ''
-Write-Host '== 将执行删除：==' -ForegroundColor Cyan
+Write-Host '== Will delete these repos: ==' -ForegroundColor Cyan
 $DeleteList | ForEach-Object { Write-Host ('  - {0}/{1}' -f $Owner, $_) }
 
 if (-not $Execute) {
     Write-Host ''
-    Write-Host 'Dry-Run 结束：未删除任何仓库。' -ForegroundColor Yellow
-    Write-Host '确认后运行： .\Delete-Archived.ps1 -Execute' -ForegroundColor Yellow
+    Write-Host 'Dry-Run finished. Nothing was deleted.' -ForegroundColor Yellow
+    Write-Host 'To actually delete, run:  .\Delete-Archived.ps1 -Execute' -ForegroundColor Yellow
     return
 }
 
-# ---- 3. 再次强调 ----
+# ---- 3. final warning ----
 Write-Host ''
-Write-Host '>>> 即将不可逆删除以上仓库。10 秒内 Ctrl+C 可取消。 <<<' -ForegroundColor Magenta
+Write-Host '>>> About to irreversibly delete the repos above. Press Ctrl+C within 10 seconds to cancel. <<<' -ForegroundColor Magenta
 Start-Sleep -Seconds 10
 
-# ---- 4a. gh 模式 ----
+# ---- 4a. gh mode ----
 if (-not $UseAPI) {
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Write-Warning '未找到 gh CLI，改为尝试 REST API。'
+        Write-Warning 'gh CLI not found. Falling back to REST API.'
     } else {
-        # 确保有 delete_repo scope
         try {
             gh auth status | Out-Null
         } catch {
-            Write-Host 'gh 未登录，先： gh auth login' -ForegroundColor Yellow
+            Write-Host 'gh is not logged in. Run:  gh auth login' -ForegroundColor Yellow
         }
-        Write-Host '提示：如果删除报 403 Resource not accessible，请先在 Powershell 执行： gh auth refresh -s delete_repo' -ForegroundColor Yellow
+        Write-Host 'If delete fails with 403, first run:  gh auth refresh -s delete_repo' -ForegroundColor Yellow
 
         foreach ($repo in $DeleteList) {
             $full = "$Owner/$repo"
-            Write-Host ('=> 删除 ' + $full) -ForegroundColor Cyan
+            Write-Host ('=> DELETE ' + $full) -ForegroundColor Cyan
             gh repo delete $full --yes
             if ($LASTEXITCODE -ne 0) {
-                Write-Warning "删除 $full 失败。可能原因：缺 delete_repo scope / 需要网页确认 / 仓库不存在。"
+                Write-Warning "Delete failed: $full (missing delete_repo scope / web confirmation / repo might not exist)."
             } else {
-                Write-Host '   已删除' -ForegroundColor DarkGray
+                Write-Host '   deleted' -ForegroundColor DarkGray
             }
         }
         return
     }
 }
 
-# ---- 4b. REST API 模式 ----
+# ---- 4b. REST API mode ----
 $token = $env:GH_TOKEN
 if (-not $token) { $token = $env:GITHUB_TOKEN }
 if (-not $token) {
-    throw 'REST API 模式需要 $env:GH_TOKEN 或 $env:GITHUB_TOKEN；或改用 gh 模式（去掉 -UseAPI）。'
+    throw 'REST API mode needs $env:GH_TOKEN or $env:GITHUB_TOKEN. Or use gh mode (remove -UseAPI).'
 }
 
 $headers = @{
-    'Authorization' = "token $token"   # 若你的 token 是 Bearer 型可改成 "Bearer $token"
+    'Authorization' = "token $token"
     'Accept'        = 'application/vnd.github+json'
     'User-Agent'    = 'powershell-delete-archived'
 }
@@ -199,15 +197,15 @@ foreach ($repo in $DeleteList) {
     Write-Host ('=> DELETE ' + $uri) -ForegroundColor Cyan
     try {
         Invoke-RestMethod -Method Delete -Uri $uri -Headers $headers | Out-Null
-        Write-Host '   已删除' -ForegroundColor DarkGray
+        Write-Host '   deleted' -ForegroundColor DarkGray
     } catch {
         $detail = $_.ErrorDetails.Message
-        Write-Warning "删除 $repo 失败: $detail"
+        Write-Warning "Delete failed for $repo : $detail"
         if ($detail -match 'https://github.com/settings/connections/') {
-            Write-Host '   需要打开该 URL 并在 GitHub 确认删除授权；确认后再重跑。' -ForegroundColor Yellow
+            Write-Host '   Open that URL and confirm deletion authorization, then rerun.' -ForegroundColor Yellow
         }
     }
 }
 
 Write-Host ''
-Write-Host '完成。' -ForegroundColor Green
+Write-Host 'Done.' -ForegroundColor Green

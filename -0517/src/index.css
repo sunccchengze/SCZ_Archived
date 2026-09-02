@@ -1,0 +1,213 @@
+@import "tailwindcss";
+
+/* Custom sci-fi theme variables */
+:root {
+  --silver: #B8C0CC;
+  --silver-light: #D0D8E4;
+  --silver-dark: #6B7280;
+  --neon-green: #39FF14;
+  --neon-green-dim: #1A7A0A;
+  --neon-green-glow: rgba(57, 255, 20, 0.3);
+  --bg-dark: #0A0E14;
+  --bg-card: rgba(16, 22, 32, 0.85);
+  --bg-card-hover: rgba(20, 28, 40, 0.95);
+  --text-primary: #E0E6ED;
+  --text-secondary: #8A92A0;
+  --border-color: rgba(57, 255, 20, 0.15);
+}
+
+@theme {
+  --font-sans: 'Noto Sans SC', system-ui, sans-serif;
+  --font-display: 'Orbitron', 'Noto Sans SC', monospace;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-green-dim) var(--bg-dark);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Noto Sans SC', system-ui, sans-serif;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  overflow-x: hidden;
+}
+
+/* Grid background pattern */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(57, 255, 20, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(57, 255, 20, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Neon glow effects */
+.glow-green {
+  text-shadow: 0 0 10px rgba(57, 255, 20, 0.5), 0 0 20px rgba(57, 255, 20, 0.3);
+}
+
+.glow-box {
+  box-shadow: 0 0 15px rgba(57, 255, 20, 0.15), inset 0 0 15px rgba(57, 255, 20, 0.05);
+}
+
+.glow-box-hover:hover {
+  box-shadow: 0 0 25px rgba(57, 255, 20, 0.25), inset 0 0 25px rgba(57, 255, 20, 0.1);
+}
+
+/* Animated border */
+.border-glow {
+  position: relative;
+  border: 1px solid rgba(57, 255, 20, 0.2);
+}
+
+.border-glow::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  background: linear-gradient(45deg, transparent 40%, rgba(57, 255, 20, 0.3) 50%, transparent 60%);
+  background-size: 200% 200%;
+  animation: borderShine 3s linear infinite;
+  z-index: -1;
+  border-radius: inherit;
+}
+
+@keyframes borderShine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Pulse animation for nodes */
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.2); }
+}
+
+.pulse-node {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* Fade in animation */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+/* Scan line effect */
+.scanline::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(57, 255, 20, 0.01) 2px,
+    rgba(57, 255, 20, 0.01) 4px
+  );
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Custom scrollbar for webkit */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--neon-green-dim);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--neon-green);
+}
+
+/* Timeline connector */
+.timeline-line {
+  position: relative;
+}
+
+.timeline-line::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(to bottom, var(--neon-green), transparent);
+}
+
+/* Typing animation */
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+/* Floating particles */
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0.3; }
+  50% { transform: translateY(-20px) rotate(180deg); opacity: 0.8; }
+}
+
+.float-particle {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* Table styles */
+.data-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.data-table th {
+  background: rgba(57, 255, 20, 0.1);
+  border-bottom: 2px solid rgba(57, 255, 20, 0.3);
+}
+
+.data-table td {
+  border-bottom: 1px solid rgba(57, 255, 20, 0.1);
+}
+
+.data-table tr:hover td {
+  background: rgba(57, 255, 20, 0.05);
+}
+
+/* Accordion styles */
+.accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s ease-out, opacity 0.3s ease-out;
+  opacity: 0;
+}
+
+.accordion-content.open {
+  max-height: 2000px;
+  opacity: 1;
+}
+
+/* Progress indicator */
+.progress-ring {
+  transform: rotate(-90deg);
+}
+
+.progress-ring circle {
+  transition: stroke-dashoffset 0.5s ease-out;
+}

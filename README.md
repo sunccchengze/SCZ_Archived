@@ -1,13 +1,14 @@
 # ai — 闲置项目归档仓
 
-> 定位：一个会话生成一个单页 App 的一次性产物，全部收敛进一个仓，长期只读。
-> About 建议填：闲置项目归档仓 · 21 个单页 App 的内容快照（含身份卡与时间戳台账）
+> # ⚠️ 改 `main` 前必读：[BRANCH-SAFETY.md](./BRANCH-SAFETY.md)
+> **别用 PR 合并 Arena 会话分支**，改用 `git push origin <分支>:main` 快进推送。
+> 实测 PR 会概率性删掉分支、切断会话链接（`delete_branch_on_merge` 关着也照样发生）：纯推送分支 6/6 存活，走过 PR 的 2/6 消失。
+
+> 定位：一次性单页 App 产物收敛进一个仓，长期只读。About 建议填：闲置项目归档仓 · 21 个单页 App 的内容快照（含身份卡与时间戳台账）
 
 ## 规则
-- 一个顶层目录 = 一个原仓；目录名 = 原仓名（含 `-0517`）。
-- 每个目录内 `README.ARCHIVE.md` 是身份证；`TIMESTAMP.md` 记录项目创建/末次提交时间。
-- 目录内保留原仓 `.gitignore` 等原生文件；根 `.gitignore` 不存在（避免父级规则吞子目录内容）。
-- 原仓历史不做进归档仓；这里保存的是**内容并集快照**，原仓仍由你日后处置（建议 Archive）。
+- 一个顶层目录 = 一个原仓（目录名 = 原仓名，含 `-0517`）；内含 `README.ARCHIVE.md`（身份证）与 `TIMESTAMP.md`（创建/末次提交时间）。
+- 目录内保留原仓 `.gitignore`；根 `.gitignore` 不存在（避免父级规则吞子目录内容）。原仓历史不入档，这里是**内容并集快照**。
 
 ## 目录总表（22 仓）
 | 目录 | 原仓 | 末次提交 | files | 内容 | 一句话 |
@@ -36,5 +37,4 @@
 | `yimingshengri` | `yimingshengri` | 2026-06-02 `392d7cf` | 37 | 手工成品 23 js + 6 css + `assets/blessing.jpg` 2.17MB | 生日祝福手工成品 |
 
 ## 恢复方法
-单个目录恢复成原仓：在该目录外执行其 `README.ARCHIVE.md` 里的 `git subtree add` 一行；找某仓先看 `MANIFEST.md`。
-原 `ai` 仓内容已迁入 `ai/`，其余 21 个仓按目录名平铺在根目录；21 个原仓已于 2026-09-02 删除（删前逐仓 blob 校验，删后 API 复核全部 404），明细见 `MANIFEST.md` 末节。
+单个目录恢复成原仓：执行其 `README.ARCHIVE.md` 里的 `git subtree add` 一行；找某仓先看 `MANIFEST.md`。原 `ai` 内容在 `ai/`，其余 21 仓平铺在根；21 个原仓已于 2026-09-02 删除（删前 blob 校验，删后 API 复核全 404），明细见 `MANIFEST.md` 末节。

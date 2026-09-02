@@ -1,8 +1,8 @@
 # ai — 闲置项目归档仓
 
-> # 🩸 动手前必读：[BRANCH-SAFETY.md](./BRANCH-SAFETY.md)
-> **AI agent 绝不主动合并/关闭 PR** —— Arena 会在 PR 合并或关闭后**立刻关闭本会话的远程通道**，之后 `push`/`gh` 全失败，未推送的提交就此丢失。
-> 内容进 main 用 `git push origin <分支>:main` 快进推送；PR 可以开着，但只能由承泽在网页点合，或作为会话最后一个动作。
+> # 🩸 动手前必读：[BRANCH-SAFETY.md](./BRANCH-SAFETY.md)（Arena Agent 生存手册 · 五条铁律）
+> **⭐ 内容进 main 用 `git push origin <你的分支>:main` 快进推送** —— 不开 PR、不合 PR，`main` 照样拿到内容，会话通道毫发无损。
+> **🩸 绝不主动合并/关闭 PR** —— Arena 会立刻关闭本会话远程通道，之后 `push`/`gh` 全失败，未推送的提交永久丢失。
 
 > 定位：一次性单页 App 产物收敛进一个仓，长期只读。About 建议填：闲置项目归档仓 · 21 个单页 App 的内容快照（含身份卡与时间戳台账）
 

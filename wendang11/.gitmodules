@@ -1,0 +1,4 @@
+[submodule "skills-library"]
+	path = skills-library
+	url = https://github.com/sunccchengze/turbine-blade-ai-platform.git
+	branch = arena/019feb03-turbine-blade-ai-platform

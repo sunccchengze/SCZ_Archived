@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#05080f">
+  <title>星际指令 · STAR MISSION</title>
+  <link rel="icon" href="assets/favicon.ico">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=ZCOOL+QingKe+HuangYou&display=swap">
+  
+  <!-- CSS Files -->
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/scenes.css">
+</head>
+<body>
+  <!-- Background Canvas -->
+  <canvas id="canvas-bg" class="canvas-layer"></canvas>
+  <canvas id="canvas-fx" class="canvas-layer"></canvas>
+  
+  <!-- Status Bar -->
+  <header class="status-bar" id="status-bar">
+    <span class="signal-strength font-mono" id="signal-strength">
+      📡 SIGNAL：<span class="signal-bars">██████████</span> 98%
+    </span>
+    <span class="route-info font-mono">XI'AN → RIZHAO · ~1000KM</span>
+  </header>
+  
+  <!-- Progress Bar -->
+  <div class="progress-bar-container" id="progress-bar">
+    <div class="progress-track">
+      <div class="progress-fill" id="progress-fill"></div>
+      <div class="progress-glow" id="progress-glow"></div>
+    </div>
+    <span class="progress-label font-label" id="progress-label">LV 1/5</span>
+    <div class="medals-row" id="medals-row">
+      <span class="medal inactive" data-medal="1">🔭</span>
+      <span class="medal inactive" data-medal="2">🌌</span>
+      <span class="medal inactive" data-medal="3">💻</span>
+      <span class="medal inactive" data-medal="4">🧠</span>
+      <span class="medal inactive" data-medal="5">🏆</span>
+    </div>
+  </div>
+  
+  <!-- Resume Overlay -->
+  <div class="resume-overlay" id="resume-overlay">
+    <div class="card card-aurora resume-card">
+      <p class="resume-icon">📡</p>
+      <p class="font-label" style="color:var(--cyan-glow);font-size:11px;">SIGNAL · INTERRUPTED</p>
+      <p class="resume-title font-cn-title">检测到未完成的星际任务</p>
+      <p class="resume-detail font-mono" id="resume-detail">LAST · LEVEL 3 · 代码连线</p>
+      <div class="resume-actions">
+        <button class="btn-primary" id="btn-resume">继续任务</button>
+        <button class="btn-ghost" id="btn-restart">重新开始</button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Toast Container -->
+  <div class="toast-container" id="toast-container"></div>
+  
+  <!-- Floating Comment -->
+  <div class="floating-comment" id="floating-comment"></div>
+  
+  <!-- Easter Egg Card -->
+  <div class="easter-egg-overlay" id="easter-egg-overlay">
+    <div class="easter-egg-card card" id="easter-egg-card"></div>
+  </div>
+  
+  <!-- Scene: Password -->
+  <section class="scene" id="scene-password">
+    <div class="scene-content scene-password-content">
+      <div class="scene-header">
+        <p class="font-label scene-tag">// ENCRYPTED TRANSMISSION</p>
+        <h1 class="font-display scene-hero">STAR MISSION</h1>
+        <p class="font-label scene-subtag">CLEARANCE REQUIRED</p>
+      </div>
+      <div class="typewriter-area" id="password-typewriter"></div>
+      <div class="password-area" id="password-area">
+        <p class="font-label" style="font-size:11px;color:var(--cyan-dim);">ENTER 4-DIGIT KEY</p>
+        <p class="prompt-text">请输入 4 位星际通行密码</p>
+        <input type="tel" inputmode="numeric" maxlength="4" pattern="[0-9]*"
+               class="input-terminal breathing" id="password-input" autocomplete="off">
+        <p class="error-text" id="password-error"></p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Scene: DNA -->
+  <section class="scene" id="scene-dna">
+    <div class="scene-content">
+      <p class="font-label" style="font-size:11px;color:var(--silver-400);text-align:center;">// BIOMETRIC AUTHENTICATION</p>
+      <h2 class="font-display dna-title">DNA SCAN</h2>
+      <p class="dna-desc" id="dna-desc">
+        通行密码已确认。<br>
+        但本任务等级为 <span class="highlight-cyan">SSS级绝密</span>，<br>
+        仅限 <span class="highlight-cyan">孙鸣泽</span> 本人开启。<br><br>
+        请将手指按压在扫描区进行DNA身份认证。
+      </p>
+      <div class="scan-area" id="scan-area">
+        <div class="scan-ring"></div>
+        <div class="scan-line"></div>
+        <div class="scan-data" id="scan-data"></div>
+      </div>
+      <p class="scan-status font-mono" id="scan-status">> AWAITING INPUT...</p>
+      <div class="scan-progress-bar" id="scan-progress-bar">
+        <div class="scan-progress-fill" id="scan-progress-fill"></div>
+      </div>
+      
+      <!-- Profile Card (hidden initially) -->
+      <div class="profile-card card card-aurora" id="profile-card">
+        <div class="card-header">
+          <span class="badge badge-success">✅ AUTHENTICATED</span>
+          <span class="font-label card-subtitle">BIOMETRIC PROFILE</span>
+        </div>
+        <div class="profile-grid">
+          <div class="profile-row">
+            <span class="label font-mono">NAME</span>
+            <span class="value">孙鸣泽</span>
+          </div>
+          <div class="profile-row">
+            <span class="label font-mono">ALIAS</span>
+            <span class="value">乙鸣</span>
+          </div>
+          <div class="profile-row">
+            <span class="label font-mono">AGE</span>
+            <span class="value">9</span>
+          </div>
+          <div class="profile-row">
+            <span class="label font-mono">HEIGHT</span>
+            <span class="value">正在疯狂生长中 📈</span>
+          </div>
+          <div class="profile-row">
+            <span class="label font-mono">BRAIN</span>
+            <span class="value highlight-warn">超标 200%（危险⚠）</span>
+          </div>
+          <div class="profile-row">
+            <span class="label font-mono">CHARM</span>
+            <span class="value">99/100<span class="note">（扣1分怕你骄傲）</span></span>
+          </div>
+          <div class="profile-row">
+            <span class="label font-mono">DNA</span>
+            <span class="value">与发送者（老哥）极高</span>
+          </div>
+          <div class="profile-row">
+            <span class="label font-mono">REL</span>
+            <span class="value highlight-cyan">亲弟弟 · 唯一认证版</span>
+          </div>
+        </div>
+        <div class="card-footer">
+          <p>结论：身份无误，允许进入。</p>
+          <p class="welcome-text font-cn-title">欢迎，乙鸣。</p>
+          <p>你哥从约1000公里外给你发了一项任务。</p>
+          <p>接不接？</p>
+        </div>
+        <button class="btn-primary" id="btn-accept">🚀 接受任务</button>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Scene: Briefing -->
+  <section class="scene" id="scene-briefing">
+    <div class="scene-content">
+      <p class="font-label" style="font-size:11px;color:var(--silver-400);text-align:center;">// INCOMING TRANSMISSION</p>
+      <h2 class="font-display briefing-title">MISSION BRIEFING</h2>
+      <div class="avatar-wrapper" id="avatar-wrapper">
+        <div class="avatar-ring"></div>
+        <div class="avatar-scan"></div>
+        <img src="assets/avatar.jpg" alt="老哥" class="avatar-img" id="avatar-img">
+      </div>
+      <p class="font-label" style="font-size:11px;text-align:center;margin-top:8px;color:var(--silver-300);">SENDER · 老哥</p>
+      <div class="briefing-text" id="briefing-text"></div>
+      <button class="btn-primary" id="btn-start-mission" style="display:none;">⚡ 开干</button>
+      <div class="loading-text font-mono" id="briefing-loading" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Level 1 -->
+  <section class="scene" id="scene-level1">
+    <div class="scene-content">
+      <div class="level-header">
+        <span class="font-label level-num">LEVEL 01</span>
+        <h2 class="font-cn-title level-title">星图解密</h2>
+        <p class="font-label level-sub">STAR MAP · DECODE</p>
+      </div>
+      <canvas id="level1-canvas" class="level1-starfield"></canvas>
+      <p class="level-question" id="level1-question">
+        星际信号中截获了一段加密图形。<br>
+        仔细看那些最亮的星星——<br>
+        它们连起来是什么？
+      </p>
+      <div class="level-input-area">
+        <input type="text" class="input-terminal" id="level1-input" placeholder="输入答案" maxlength="10">
+        <button class="btn-primary" id="level1-submit">确认</button>
+      </div>
+      <p class="hint-text" id="level1-hint"></p>
+      
+      <!-- Level 1 Result Card -->
+      <div class="result-card card" id="level1-result" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Level 2 -->
+  <section class="scene" id="scene-level2">
+    <div class="scene-content">
+      <div class="level-header">
+        <span class="font-label level-num">LEVEL 02</span>
+        <h2 class="font-cn-title level-title">宇宙知识</h2>
+        <p class="font-label level-sub">COSMIC QUIZ</p>
+      </div>
+      <p class="level-question">
+        国际空间站上的宇航员，<br>
+        一天能看到几次日出？
+      </p>
+      <div class="options-grid" id="level2-options">
+        <button class="option-btn" data-value="A">
+          <span class="option-label font-display">A</span>
+          <span class="option-text">1次，和我们一样</span>
+        </button>
+        <button class="option-btn" data-value="B">
+          <span class="option-label font-display">B</span>
+          <span class="option-text">2次</span>
+        </button>
+        <button class="option-btn" data-value="C">
+          <span class="option-label font-display">C</span>
+          <span class="option-text">16次</span>
+        </button>
+        <button class="option-btn" data-value="D">
+          <span class="option-label font-display">D</span>
+          <span class="option-text">24次</span>
+        </button>
+      </div>
+      <p class="hint-text" id="level2-hint"></p>
+      <div class="result-card card" id="level2-result" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Minigame -->
+  <section class="scene" id="scene-minigame">
+    <div class="scene-content">
+      <div class="alert-card card" id="minigame-alert">
+        <p class="font-label alert-tag">⚠ POWER LOW</p>
+        <p class="alert-title font-cn-title">飞船能量不够了！</p>
+        <p class="alert-desc">收集星际能量才能继续。</p>
+        <p class="alert-detail font-mono">DURATION · 15S</p>
+        <button class="btn-primary" id="btn-start-game">🚀 开始</button>
+      </div>
+      <div class="game-hud" id="game-hud" style="display:none;">
+        <span class="font-mono" id="game-timer">15</span>
+        <span class="font-mono" id="game-score">⭐ 0</span>
+      </div>
+      <canvas id="minigame-canvas" style="display:none;"></canvas>
+      <div class="result-card card" id="minigame-result" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Level 3 -->
+  <section class="scene" id="scene-level3">
+    <div class="scene-content">
+      <div class="level-header">
+        <span class="font-label level-num">LEVEL 03</span>
+        <h2 class="font-cn-title level-title">代码连线</h2>
+        <p class="font-label level-sub">CODE · MATCH</p>
+      </div>
+      <p class="level-instruction">点击左边的代码，再点击右边对应的含义</p>
+      <div class="matching-area" id="matching-area">
+        <div class="match-column" id="match-codes">
+          <div class="match-item font-mono" data-id="code1">print("你好")</div>
+          <div class="match-item font-mono" data-id="code2">if (下雨) { 带伞 }</div>
+          <div class="match-item font-mono" data-id="code3">while (想你) { 打电话 }</div>
+          <div class="match-item font-mono" data-id="code4">age = 9</div>
+        </div>
+        <svg class="connections-svg" id="connections-svg"></svg>
+        <div class="match-column" id="match-meanings">
+          <div class="match-item" data-id="A">年龄等于9</div>
+          <div class="match-item" data-id="B">让电脑说"你好"</div>
+          <div class="match-item" data-id="C">只要想你就给你打电话</div>
+          <div class="match-item" data-id="D">如果下雨就带伞</div>
+        </div>
+      </div>
+      <button class="btn-primary" id="level3-submit" style="display:none;">✅ 提交</button>
+      <p class="hint-text" id="level3-hint"></p>
+      <div class="result-card card" id="level3-result" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Level 4 -->
+  <section class="scene" id="scene-level4">
+    <div class="scene-content">
+      <div class="level-header">
+        <span class="font-label level-num">LEVEL 04</span>
+        <h2 class="font-cn-title level-title">脑筋急转弯</h2>
+        <p class="font-label level-sub">LOGIC TRAP</p>
+      </div>
+      <p class="level-question">
+        一栋楼有10层。<br>
+        你从1楼走到2楼要走10级台阶。<br><br>
+        问：从1楼走到10楼，<br>一共要走多少级台阶？
+      </p>
+      <div class="options-grid" id="level4-options">
+        <button class="option-btn" data-value="A">
+          <span class="option-label font-display">A</span>
+          <span class="option-text">100级</span>
+        </button>
+        <button class="option-btn" data-value="B">
+          <span class="option-label font-display">B</span>
+          <span class="option-text">90级</span>
+        </button>
+        <button class="option-btn" data-value="C">
+          <span class="option-label font-display">C</span>
+          <span class="option-text">110级</span>
+        </button>
+        <button class="option-btn" data-value="D">
+          <span class="option-label font-display">D</span>
+          <span class="option-text">10级</span>
+        </button>
+      </div>
+      <p class="hint-text" id="level4-hint"></p>
+      <div class="result-card card" id="level4-result" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Level 5 -->
+  <section class="scene" id="scene-level5">
+    <div class="scene-content">
+      <div class="level-header">
+        <span class="font-label level-num boss-level">FINAL BOSS</span>
+        <h2 class="font-cn-title level-title">终极挑战</h2>
+        <p class="font-label level-sub">ULTIMATE · CHALLENGE</p>
+      </div>
+      <p class="level-question">
+        最终题。注意看。<br><br>
+        有5个人参加赛跑。<br>
+        你超过了第2名。<br><br>
+        你现在是第几名？
+      </p>
+      <div class="options-grid" id="level5-options">
+        <button class="option-btn" data-value="A">
+          <span class="option-label font-display">A</span>
+          <span class="option-text">第1名</span>
+        </button>
+        <button class="option-btn" data-value="B">
+          <span class="option-label font-display">B</span>
+          <span class="option-text">第2名</span>
+        </button>
+        <button class="option-btn" data-value="C">
+          <span class="option-label font-display">C</span>
+          <span class="option-text">第3名</span>
+        </button>
+        <button class="option-btn" data-value="D">
+          <span class="option-label font-display">D</span>
+          <span class="option-text">取决于速度</span>
+        </button>
+      </div>
+      <p class="hint-text" id="level5-hint"></p>
+      <div class="result-card card" id="level5-result" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Merge -->
+  <section class="scene" id="scene-merge">
+    <div class="scene-content merge-content">
+      <div class="merge-stage" id="merge-stage"></div>
+      <div class="merge-stats card" id="merge-stats" style="display:none;">
+        <p class="merge-congrats font-cn-title">🎊 全部防火墙已突破！</p>
+        <p class="font-mono">任务完成度：<span class="highlight-gold">100%</span></p>
+        <p class="font-mono">获得勋章：<span class="highlight-gold">5/5</span></p>
+        <p class="font-mono">认证等级：<span class="highlight-gold">星际探险家 · 一级</span></p>
+      </div>
+      <div class="cert-loading" id="cert-loading" style="display:none;">
+        <p class="font-mono">> GENERATING CERTIFICATE...</p>
+        <div class="fake-progress-bar">
+          <div class="fake-progress-fill" id="fake-progress-fill"></div>
+        </div>
+        <span class="font-mono" id="fake-progress-text">0%</span>
+      </div>
+      <div class="hidden-prompt card" id="hidden-prompt" style="display:none;">
+        <p class="font-label" style="color:var(--purple-glow);font-size:11px;">⚠ ANOMALY DETECTED</p>
+        <p>等一下。</p>
+        <p>系统检测到一个隐藏关卡。</p>
+        <p>从未有人发现。</p>
+        <p>难度：<span class="blink">？？？</span></p>
+        <div class="btn-group">
+          <button class="btn-primary" id="btn-enter-hidden">🔥 进入隐藏关</button>
+          <button class="btn-ghost" id="btn-skip-hidden">⏭ 跳过</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Scene: Hidden -->
+  <section class="scene" id="scene-hidden">
+    <div class="scene-content">
+      <div class="level-header">
+        <span class="font-label level-num hidden-level">??? · HIDDEN</span>
+        <h2 class="font-cn-title level-title">？？？</h2>
+        <p class="font-label level-sub">SECRET · STAGE</p>
+      </div>
+      <p class="level-question">
+        最后一题。没有标准答案。<br>
+        但只有真正聪明的人选得对。<br><br>
+        一个人走到岔路口。<br>
+        左边路牌写着"天才走这边"。<br>
+        右边路牌写着"这边也是天才走的"。<br>
+        地上有一行很小的字：<br>
+        <span class="small-text">"真正的天才会注意到这行字"</span><br><br>
+        天才应该走哪边？
+      </p>
+      <div class="options-grid" id="hidden-options">
+        <button class="option-btn" data-value="A">
+          <span class="option-label font-display">A</span>
+          <span class="option-text">左边</span>
+        </button>
+        <button class="option-btn" data-value="B">
+          <span class="option-label font-display">B</span>
+          <span class="option-text">右边</span>
+        </button>
+        <button class="option-btn" data-value="C">
+          <span class="option-label font-display">C</span>
+          <span class="option-text">都不走——注意到地上那行字就已经证明是天才了</span>
+        </button>
+        <button class="option-btn" data-value="D">
+          <span class="option-label font-display">D</span>
+          <span class="option-text">两边都走</span>
+        </button>
+      </div>
+      <p class="hint-text" id="hidden-hint"></p>
+      <div class="result-card card" id="hidden-result" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- Scene: Certificate -->
+  <section class="scene" id="scene-certificate">
+    <div class="scene-content">
+      <div class="certificate card-aurora" id="certificate">
+        <div class="cert-corner cert-corner-tl">✦</div>
+        <div class="cert-corner cert-corner-tr">✦</div>
+        <div class="cert-corner cert-corner-bl">✦</div>
+        <div class="cert-corner cert-corner-br">✦</div>
+        
+        <p class="font-label cert-tag">SSS · CLEARANCE</p>
+        <h1 class="font-display cert-title-en">STAR EXPLORER</h1>
+        <h2 class="font-cn-title cert-title-cn">星际探险家认证证书</h2>
+        
+        <div class="cert-body">
+          <p>兹认证：</p>
+          <p class="cert-name font-cn-title">孙鸣泽 同学</p>
+          <p>于2026年6月2日（九岁生日当天）</p>
+          <p>成功突破全部星际防火墙。</p>
+          
+          <p class="font-label cert-section">// AWARDED TITLE</p>
+          <p class="cert-award">⭐ 星际探险家 · 一级认证 ⭐</p>
+          
+          <p class="font-label cert-section">// MEDALS</p>
+          <ul class="cert-medals">
+            <li>🔭 星图解读者 · STAR READER</li>
+            <li>🌌 宇宙探索者 · COSMIC EXPLORER</li>
+            <li>💻 代码破译师 · CODE BREAKER</li>
+            <li>🧠 逻辑鬼才 · LOGIC GENIUS</li>
+            <li>🏆 终极破译者 · ULTIMATE DECODER</li>
+            <li id="hidden-medal-line">👑 超级天才 · GENIUS（隐藏成就）</li>
+          </ul>
+          
+          <p class="font-label cert-section">// MISSION DATA</p>
+          <ul class="cert-data font-mono">
+            <li>TOTAL TIME · <span id="cert-time">-- 分 -- 秒</span></li>
+            <li>WRONG · <span id="cert-wrong">0</span> 次</li>
+            <li>ENERGY · <span id="cert-energy">0</span> 颗</li>
+          </ul>
+          
+          <p class="cert-comment" id="cert-comment"></p>
+          
+          <div class="cert-footer">
+            <p class="cert-issuer" id="cert-issuer">颁发机构：西安交通大学 · 老哥星际研究院</p>
+            <p>颁发人：你哥</p>
+            <p class="font-mono">DATE · 2026.06.02</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="share-buttons">
+        <button class="share-btn">📱 给老妈</button>
+        <button class="share-btn">📱 给老爸</button>
+        <button class="share-btn">📱 自己收着</button>
+        <button class="share-btn">📱 给全世界</button>
+      </div>
+      
+      <p class="retry-text" id="retry-text">想刷更好成绩？<span class="retry-link" id="retry-link">🔄 重新挑战</span></p>
+      
+      <button class="btn-primary" id="btn-to-cake">🎂 最后一站</button>
+    </div>
+  </section>
+  
+  <!-- Scene: Cake -->
+  <section class="scene" id="scene-cake">
+    <div class="scene-content cake-scene-content">
+      <p class="cake-intro" id="cake-intro">
+        关卡全过了，脑子可以歇了。<br><br>
+        这是你的蛋糕。<br>
+        像素做的，不能吃。<br>
+        但蜡烛是真点的。<br><br>
+        许个愿。<br>
+        然后用手指划过蜡烛，把火扇灭。
+      </p>
+      <div class="cake-container" id="cake-container">
+        <div class="candles-row" id="candles-row"></div>
+        <div class="cake">
+          <div class="cake-layer cake-layer-3"></div>
+          <div class="cake-layer cake-layer-2"></div>
+          <div class="cake-layer cake-layer-1"></div>
+          <div class="cake-text font-cn-title">乙鸣 9岁</div>
+        </div>
+      </div>
+      <div class="blessing-image-wrapper" id="blessing-image">
+        <img src="assets/blessing.jpg" alt="祝福" class="blessing-img">
+      </div>
+      <button class="btn-primary" id="btn-continue-fireworks" style="display:none;">继续</button>
+    </div>
+  </section>
+  
+  <!-- Scene: Fireworks -->
+  <section class="scene" id="scene-fireworks">
+    <div class="scene-content fireworks-content">
+      <button class="btn-primary" id="btn-final-transmission" style="display:none;">📡 接收最终通讯</button>
+    </div>
+  </section>
+  
+  <!-- Scene: Final -->
+  <section class="scene" id="scene-final">
+    <div class="scene-content">
+      <p class="font-label" style="font-size:12px;color:var(--cyan-dim);text-align:center;">// FINAL TRANSMISSION</p>
+      <h1 class="font-display final-header-en">FROM XI'AN</h1>
+      <h2 class="font-cn-title final-header-cn">📡 来自西安的最终通讯</h2>
+      <div class="final-text-area" id="final-text-area"></div>
+      <svg class="china-map" id="china-map" viewBox="0 0 400 350" style="display:none;">
+        <path class="map-outline" d="M180,50 Q220,45 260,55 Q300,70 330,100 Q350,130 355,170 Q360,210 340,250 Q310,290 270,310 Q230,330 180,325 Q130,320 90,290 Q60,260 50,220 Q45,180 55,140 Q70,100 100,70 Q140,50 180,50 Z" stroke="rgba(240,241,245,0.15)" fill="none" stroke-width="1"/>
+        <circle cx="195" cy="180" r="4" fill="var(--cyan-dim)" class="city-dot pulse-dot"/>
+        <text x="195" y="198" class="city-label font-label">XI'AN</text>
+        <circle id="dot-rizhao" cx="280" cy="165" r="4" fill="var(--gold)" class="city-dot"/>
+        <text x="280" y="183" class="city-label font-label">RIZHAO</text>
+        <path id="arc-path" d="M195,180 Q237,120 280,165" stroke="var(--cyan-glow)" stroke-width="2" fill="none" stroke-dasharray="200" stroke-dashoffset="200"/>
+        <circle r="3" fill="var(--gold-glow)" id="arc-dot"/>
+      </svg>
+      <div class="delivery-status" id="delivery-status" style="display:none;">
+        <p class="font-label" style="color:var(--cyan-glow);">📍 XI'AN → RIZHAO</p>
+        <p class="font-mono">DISTANCE · ~1000 KM</p>
+        <p>生日祝福：已送达 ✅</p>
+        <p>任务状态：圆满完成 🎯</p>
+      </div>
+    </div>
+  </section>
+  
+  <!-- Scene: Wish -->
+  <section class="scene" id="scene-wish">
+    <div class="scene-content">
+      <p class="easter-egg-trigger" id="egg5-trigger">psst... 点这里 👀</p>
+      <div class="wish-card card card-aurora" id="wish-card" style="display:none;">
+        <div class="wish-header">
+          <span class="wish-icon">🎁</span>
+          <p class="font-label" style="font-size:10px;color:var(--silver-400);">WISH · VOUCHER</p>
+          <h3 class="font-cn-title">生日愿望兑换卡</h3>
+        </div>
+        <div class="wish-info font-mono">
+          <div class="wish-row"><span>HOLDER</span><span>孙鸣泽（乙鸣）</span></div>
+          <div class="wish-row"><span>ISSUER</span><span>老哥</span></div>
+          <div class="wish-row"><span>VALID</span><span>FOREVER</span></div>
+        </div>
+        <p class="wish-desc">
+          在下面写一个愿望，你哥尽力帮你实现。<br>
+          什么都行——一个东西、一件事、一个约定。<br>
+          写就完了。
+        </p>
+        <textarea class="input-terminal wish-textarea" id="wish-input" placeholder="写你的愿望..." rows="3" maxlength="500"></textarea>
+        <button class="btn-primary" id="btn-send-wish">✨ 发送愿望</button>
+      </div>
+      <div class="wish-success" id="wish-success" style="display:none;"></div>
+      <div class="ending-text" id="ending-text" style="display:none;"></div>
+    </div>
+  </section>
+  
+  <!-- JS Files -->
+  <script src="js/config.js" defer></script>
+  <script src="js/utils.js" defer></script>
+  <script src="js/state.js" defer></script>
+  <script src="js/typewriter.js" defer></script>
+  <script src="js/canvas-bg.js" defer></script>
+  <script src="js/canvas-fx.js" defer></script>
+  <script src="js/scene-password.js" defer></script>
+  <script src="js/scene-dna.js" defer></script>
+  <script src="js/scene-briefing.js" defer></script>
+  <script src="js/scene-level1.js" defer></script>
+  <script src="js/scene-level2.js" defer></script>
+  <script src="js/scene-minigame.js" defer></script>
+  <script src="js/scene-level3.js" defer></script>
+  <script src="js/scene-level4.js" defer></script>
+  <script src="js/scene-level5.js" defer></script>
+  <script src="js/scene-merge.js" defer></script>
+  <script src="js/scene-hidden.js" defer></script>
+  <script src="js/scene-certificate.js" defer></script>
+  <script src="js/scene-cake.js" defer></script>
+  <script src="js/scene-fireworks.js" defer></script>
+  <script src="js/scene-final.js" defer></script>
+  <script src="js/scene-wish.js" defer></script>
+  <script src="js/main.js" defer></script>
+</body>
+</html>

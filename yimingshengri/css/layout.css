@@ -1,0 +1,262 @@
+/* Layout - 场景容器、状态栏、进度条 */
+
+/* Status Bar */
+.status-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 36px;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  background: rgba(5, 8, 15, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(125, 211, 252, 0.08);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--silver-300);
+  letter-spacing: 0.05em;
+  z-index: 50;
+}
+
+.status-bar.visible {
+  display: flex;
+}
+
+.signal-strength {
+  cursor: pointer;
+}
+
+.signal-bars {
+  color: var(--cyan-glow);
+}
+
+/* Progress Bar */
+.progress-bar-container {
+  position: fixed;
+  top: 36px;
+  left: 0;
+  right: 0;
+  padding: 8px 16px;
+  background: rgba(5, 8, 15, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 49;
+}
+
+.progress-bar-container.visible {
+  display: flex;
+}
+
+.progress-track {
+  height: 4px;
+  background: rgba(125, 211, 252, 0.1);
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan-dim), var(--cyan-glow));
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+
+.progress-glow {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, transparent, rgba(125, 211, 252, 0.5), transparent);
+  border-radius: 2px;
+  animation: progress-glow-move 2s ease-in-out infinite;
+}
+
+.progress-label {
+  font-size: 10px;
+  color: var(--silver-400);
+  text-align: center;
+}
+
+.medals-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.medal {
+  font-size: 18px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.medal.inactive {
+  filter: grayscale(1) opacity(0.3);
+}
+
+.medal.active {
+  filter: none;
+  animation: medal-pop 0.5s ease;
+}
+
+/* Scene containers */
+.scene {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.4s ease;
+  z-index: 10;
+}
+
+.scene.scene-active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.scene-content {
+  width: 100%;
+  max-width: var(--content-max-width-mobile);
+  padding: var(--section-padding);
+  padding-top: 36px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  max-height: 100vh;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .scene-content {
+    max-width: var(--content-max-width-desktop);
+  }
+}
+
+/* Resume Overlay */
+.resume-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 15, 0.9);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+
+.resume-overlay.visible {
+  display: flex;
+}
+
+.resume-card {
+  text-align: center;
+  padding: 30px 24px;
+  max-width: 340px;
+}
+
+.resume-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.resume-title {
+  font-size: 20px;
+  color: var(--silver-100);
+  margin: 16px 0 8px;
+}
+
+.resume-detail {
+  font-size: 12px;
+  color: var(--cyan-glow);
+  margin-bottom: 24px;
+}
+
+.resume-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Toast Container */
+.toast-container {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast {
+  background: rgba(15, 21, 40, 0.9);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 14px;
+  color: var(--silver-100);
+  white-space: nowrap;
+  animation: toast-in 0.3s ease, toast-out 0.3s ease forwards;
+  animation-delay: 0s, var(--toast-duration, 2s);
+}
+
+/* Floating Comment */
+.floating-comment {
+  position: fixed;
+  top: 100px;
+  right: -300px;
+  background: rgba(15, 21, 40, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(125, 211, 252, 0.15);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--silver-200);
+  white-space: nowrap;
+  z-index: 48;
+  opacity: 0;
+}
+
+.floating-comment.animate {
+  animation: float-comment 4s ease-in-out forwards;
+}
+
+/* Easter Egg Overlay */
+.easter-egg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 8, 15, 0.8);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 150;
+  padding: 20px;
+}
+
+.easter-egg-overlay.visible {
+  display: flex;
+}
+
+.easter-egg-card {
+  text-align: center;
+  padding: 24px;
+  max-width: 320px;
+  animation: card-pop 0.4s ease;
+}

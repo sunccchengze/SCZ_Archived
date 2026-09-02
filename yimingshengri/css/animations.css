@@ -1,0 +1,243 @@
+/* Animations - 所有 @keyframes */
+
+/* Aurora rotation */
+@keyframes aurora-rotate {
+  to {
+    --aurora-angle: 360deg;
+  }
+}
+
+/* Button shimmer */
+@keyframes btn-shimmer {
+  0% { left: -100%; }
+  50%, 100% { left: 100%; }
+}
+
+/* Input breathing */
+@keyframes input-breathe {
+  0%, 100% { box-shadow: 0 0 10px rgba(125, 211, 252, 0.05); }
+  50% { box-shadow: 0 0 25px rgba(125, 211, 252, 0.12); }
+}
+
+/* Shake */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(6px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(4px); }
+}
+
+/* Toast animations */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Floating comment */
+@keyframes float-comment {
+  0% { right: -300px; opacity: 0; }
+  15% { right: 16px; opacity: 1; }
+  75% { right: 16px; opacity: 1; }
+  100% { right: calc(100% + 300px); opacity: 0; }
+}
+
+/* Card pop */
+@keyframes card-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Medal pop */
+@keyframes medal-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* Progress glow move */
+@keyframes progress-glow-move {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
+/* Pulse */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Blink */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* Scan line */
+@keyframes scan-line {
+  0% { top: 0; }
+  100% { top: 100%; }
+}
+
+/* Scan ring rotate */
+@keyframes scan-ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Avatar ring rotate */
+@keyframes avatar-ring-rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Avatar scan */
+@keyframes avatar-scan {
+  0% { top: -10%; opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { top: 110%; opacity: 0; }
+}
+
+/* Slide up */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Fade in scale */
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Climax bounce */
+@keyframes climax-bounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+}
+
+/* Flame flicker */
+@keyframes flame-flicker {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1) rotate(-2deg);
+  }
+  25% {
+    transform: scaleY(1.1) scaleX(0.9) rotate(2deg);
+  }
+  50% {
+    transform: scaleY(0.95) scaleX(1.05) rotate(-1deg);
+  }
+  75% {
+    transform: scaleY(1.05) scaleX(0.95) rotate(1deg);
+  }
+}
+
+/* Smoke rise */
+@keyframes smoke-rise {
+  0% {
+    opacity: 0.6;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-40px) scale(2);
+  }
+}
+
+/* Cursor blink */
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* Subtle fade in */
+@keyframes subtle-fadein {
+  to { opacity: 1; }
+}
+
+/* City dot pulse */
+@keyframes city-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(125, 211, 252, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(125, 211, 252, 0);
+  }
+}
+
+/* Gold burst */
+@keyframes gold-burst {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3);
+  }
+}
+
+/* Screen flash */
+@keyframes screen-flash {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Row fade in */
+@keyframes row-fade-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

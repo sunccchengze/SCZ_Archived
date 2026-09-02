@@ -1,0 +1,313 @@
+/* Components - 按钮、输入框、卡片、勋章、证书 */
+
+/* Card Base */
+.card {
+  background: rgba(15, 21, 40, 0.65);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(125, 211, 252, 0.12);
+  border-radius: var(--card-radius);
+  box-shadow:
+    0 0 30px rgba(125, 211, 252, 0.04),
+    inset 0 1px 0 rgba(255,255,255,0.05);
+  padding: var(--card-padding);
+}
+
+/* Aurora Border Card */
+.card-aurora {
+  position: relative;
+}
+
+.card-aurora::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: conic-gradient(
+    from var(--aurora-angle),
+    transparent 0%,
+    var(--cyan-glow) 10%,
+    transparent 20%,
+    var(--purple-glow) 40%,
+    transparent 50%,
+    var(--gold-glow) 70%,
+    transparent 80%
+  );
+  opacity: 0.5;
+  filter: blur(2px);
+  animation: aurora-rotate 8s linear infinite;
+  z-index: -1;
+}
+
+/* Primary Button */
+.btn-primary {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(124, 58, 237, 0.2));
+  border: 1px solid rgba(125, 211, 252, 0.3);
+  border-radius: var(--button-radius);
+  color: var(--cyan-glow);
+  height: var(--button-height);
+  padding: 0 32px;
+  font-family: var(--font-cn-body);
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-primary:hover, .btn-primary:active {
+  border-color: rgba(125, 211, 252, 0.6);
+  box-shadow: 0 0 20px rgba(125, 211, 252, 0.15);
+  transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(240, 241, 245, 0.08), transparent);
+  animation: btn-shimmer 3s ease-in-out infinite;
+}
+
+/* Ghost Button */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(139, 146, 168, 0.3);
+  border-radius: var(--button-radius);
+  color: var(--silver-300);
+  height: var(--button-height);
+  padding: 0 24px;
+  font-family: var(--font-cn-body);
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-ghost:hover, .btn-ghost:active {
+  border-color: rgba(139, 146, 168, 0.5);
+  color: var(--silver-200);
+}
+
+/* Input Terminal */
+.input-terminal {
+  background: rgba(5, 8, 15, 0.8);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  border-radius: 10px;
+  color: var(--cyan-glow);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  letter-spacing: 8px;
+  text-align: center;
+  height: 52px;
+  width: 100%;
+  max-width: 260px;
+  caret-color: var(--cyan-glow);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.input-terminal:focus {
+  outline: none;
+  border-color: rgba(125, 211, 252, 0.5);
+  box-shadow: 0 0 20px rgba(125, 211, 252, 0.08);
+}
+
+.input-terminal.breathing {
+  animation: input-breathe 3s ease-in-out infinite;
+}
+
+.input-terminal.error {
+  border-color: var(--error);
+  animation: shake 0.3s ease;
+}
+
+.input-terminal.success {
+  border-color: var(--success);
+}
+
+/* Text Input (smaller letter spacing) */
+.input-terminal[type="text"] {
+  letter-spacing: 2px;
+  font-size: 16px;
+}
+
+/* Textarea */
+.wish-textarea {
+  height: auto;
+  min-height: 100px;
+  max-width: 100%;
+  resize: none;
+  padding: 16px;
+  font-size: 16px;
+  letter-spacing: 0;
+  text-align: left;
+  line-height: 1.5;
+}
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.badge-success {
+  background: rgba(74, 222, 128, 0.15);
+  color: var(--success);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+/* Option Button */
+.option-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  background: rgba(15, 21, 40, 0.5);
+  border: 1px solid rgba(125, 211, 252, 0.15);
+  border-radius: 12px;
+  color: var(--silver-200);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.option-btn:hover {
+  border-color: rgba(125, 211, 252, 0.3);
+  background: rgba(15, 21, 40, 0.7);
+}
+
+.option-btn.selected {
+  border-color: var(--cyan-glow);
+  background: rgba(125, 211, 252, 0.1);
+}
+
+.option-btn.correct {
+  border-color: var(--success);
+  background: rgba(74, 222, 128, 0.1);
+}
+
+.option-btn.wrong {
+  border-color: var(--error);
+  background: rgba(248, 113, 113, 0.1);
+  animation: shake 0.3s ease;
+}
+
+.option-label {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(125, 211, 252, 0.1);
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--cyan-glow);
+  flex-shrink: 0;
+}
+
+.option-text {
+  flex: 1;
+}
+
+.options-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 24px 0;
+}
+
+/* Result Card */
+.result-card {
+  margin-top: 24px;
+  text-align: center;
+  padding: 24px;
+}
+
+.result-card p {
+  margin: 8px 0;
+}
+
+.result-card .medal-earned {
+  font-size: 14px;
+  color: var(--gold);
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+/* Hint Text */
+.hint-text {
+  font-size: 14px;
+  color: var(--silver-300);
+  margin-top: 16px;
+  min-height: 20px;
+}
+
+/* Error Text */
+.error-text {
+  font-size: 14px;
+  color: var(--error);
+  margin-top: 12px;
+  min-height: 20px;
+}
+
+/* Share Buttons */
+.share-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 24px 0;
+}
+
+.share-btn {
+  padding: 12px 16px;
+  background: rgba(15, 21, 40, 0.5);
+  border: 1px solid rgba(125, 211, 252, 0.15);
+  border-radius: 10px;
+  color: var(--silver-200);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.share-btn:hover {
+  border-color: rgba(125, 211, 252, 0.3);
+  background: rgba(15, 21, 40, 0.7);
+}
+
+/* Button Group */
+.btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* Level Input Area */
+.level-input-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin: 24px 0;
+}

@@ -1,0 +1,60 @@
+/* CSS Variables - 星际指令主题 */
+
+@property --aurora-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+:root {
+  /* 背景层 */
+  --bg-void: #05080f;
+  --bg-deep: #0a0e1a;
+  --bg-nebula: #0f1528;
+
+  /* 银色（日常主色） */
+  --silver-100: #f0f1f5;
+  --silver-200: #c8ccd8;
+  --silver-300: #8b92a8;
+  --silver-400: #5a6178;
+
+  /* 冷青（交互元素） */
+  --cyan-glow: #7dd3fc;
+  --cyan-dim: #38bdf8;
+  --cyan-deep: #0c4a6e;
+
+  /* 紫色点缀 */
+  --purple-glow: #c4b5fd;
+  --purple-dim: #7c3aed;
+
+  /* 功能色 */
+  --success: #4ade80;
+  --error: #f87171;
+  --gold: #fbbf24;
+  --gold-glow: #fde68a;
+
+  /* 弥散光晕 */
+  --glow-cyan: rgba(125, 211, 252, 0.08);
+  --glow-purple: rgba(196, 181, 253, 0.06);
+  --glow-gold: rgba(251, 191, 36, 0.10);
+
+  /* 字体 - 使用 Rajdhani 替代 Major Mono Display，更清晰 */
+  --font-display: 'Orbitron', -apple-system, sans-serif;
+  --font-mono: 'Share Tech Mono', 'JetBrains Mono', 'Courier New', monospace;
+  --font-label: 'Rajdhani', 'Orbitron', sans-serif;
+  --font-cn-title: 'ZCOOL QingKe HuangYou', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-cn-body: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', sans-serif;
+
+  /* 布局 */
+  --content-max-width-mobile: 430px;
+  --content-max-width-desktop: 600px;
+  --section-padding: 24px 20px;
+  --card-padding: 20px;
+  --card-radius: 16px;
+  --button-radius: 12px;
+  --button-height: 48px;
+  --gap-sm: 8px;
+  --gap-md: 16px;
+  --gap-lg: 24px;
+  --gap-xl: 40px;
+}

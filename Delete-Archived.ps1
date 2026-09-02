@@ -48,6 +48,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# PowerShell 5.1 defaults to SSL3/TLS1.0, which GitHub's API rejects with
+# "Could not create SSL/TLS secure channel". Force TLS 1.2.
+try {
+    [Net.ServicePointManager]::SecurityProtocol = `
+        [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+} catch { }
+
 # ---- delete list (verified) ----
 $DeleteList = @(
     'IELTS20260423scz',
@@ -148,64 +155,199 @@ if (-not $Execute) {
     return
 }
 
-# ---- 3. final warning ----
+# ---- 3. resolve credentials BEFORE the countdown ----
+# Decide up front how we will authenticate, so we never waste the 10s wait
+# only to die on a missing token.
+
+$mode  = $null      # 'gh' or 'api'
+$token = $null
+
+if (-not $UseAPI) {
+    if (Get-Command gh -ErrorAction SilentlyContinue) {
+        $ghOk = $true
+        $eapSave = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $null = gh auth status 2>&1
+            if ($LASTEXITCODE -ne 0) { $ghOk = $false }
+        } catch { $ghOk = $false }
+        $ErrorActionPreference = $eapSave
+        if ($ghOk) {
+            $mode = 'gh'
+            Write-Host 'Auth: gh CLI (logged in).' -ForegroundColor Green
+        } else {
+            Write-Warning 'gh CLI found but not logged in. Run:  gh auth login'
+        }
+    } else {
+        Write-Warning 'gh CLI not found on this machine.'
+    }
+}
+
+if (-not $mode) {
+    $token = $env:GH_TOKEN
+    if (-not $token) { $token = $env:GITHUB_TOKEN }
+
+    if (-not $token) {
+        Write-Host ''
+        Write-Host 'No gh CLI and no token in environment.' -ForegroundColor Yellow
+        Write-Host 'Paste a GitHub Personal Access Token to delete via REST API.' -ForegroundColor Yellow
+        Write-Host 'Required scope:  delete_repo  (classic token), or a fine-grained' -ForegroundColor DarkGray
+        Write-Host 'token with Administration: Read and write on these repos.' -ForegroundColor DarkGray
+        Write-Host 'Create one at: https://github.com/settings/tokens' -ForegroundColor DarkGray
+        Write-Host 'Input is hidden. Press Enter with nothing to abort.' -ForegroundColor DarkGray
+        $sec = Read-Host -AsSecureString 'Token'
+        if ($sec -and $sec.Length -gt 0) {
+            $bstr  = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+            $token = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
+            [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
+        }
+    }
+
+    if (-not $token) {
+        Write-Host ''
+        Write-Host 'No credentials available. Nothing was deleted.' -ForegroundColor Red
+        Write-Host 'Options:' -ForegroundColor Yellow
+        Write-Host '  1. winget install --id GitHub.cli   then  gh auth login  and rerun' -ForegroundColor Yellow
+        Write-Host '  2. $env:GH_TOKEN = "ghp_xxx"        then  .\Delete-Archived.ps1 -Execute' -ForegroundColor Yellow
+        return
+    }
+
+    $mode = 'api'
+    $token = $token.Trim()
+
+    # NOTE: PS 5.1 throws if User-Agent is passed inside -Headers; use -UserAgent.
+    $headers = @{
+        'Authorization' = "token $token"
+        'Accept'        = 'application/vnd.github+json'
+    }
+    $UA = 'powershell-delete-archived'
+
+    # verify the token works AND has admin on a sample repo, before countdown
+    Write-Host ''
+    Write-Host 'Verifying token...' -ForegroundColor Cyan
+    try {
+        $who = Invoke-RestMethod -Uri 'https://api.github.com/user' -Headers $headers -UserAgent $UA
+        Write-Host ('  authenticated as: ' + $who.login) -ForegroundColor Green
+    } catch {
+        Write-Host '  Token rejected by GitHub (401). Nothing was deleted.' -ForegroundColor Red
+        return
+    }
+
+    $probe = $DeleteList | Where-Object { $_ -ne 'fengdian001' } | Select-Object -First 1
+    try {
+        $pr = Invoke-RestMethod -Uri "https://api.github.com/repos/$Owner/$probe" -Headers $headers -UserAgent $UA
+        if ($pr.permissions.admin) {
+            Write-Host ('  admin rights on ' + $Owner + '/' + $probe + ': yes') -ForegroundColor Green
+        } else {
+            Write-Host ('  admin rights on ' + $Owner + '/' + $probe + ': NO') -ForegroundColor Red
+            Write-Host '  This token cannot delete repos. Need delete_repo scope' -ForegroundColor Yellow
+            Write-Host '  (classic) or Administration: Read and write (fine-grained).' -ForegroundColor Yellow
+            Write-Host '  Nothing was deleted.' -ForegroundColor Red
+            return
+        }
+    } catch {
+        Write-Warning ('  Could not read ' + $Owner + '/' + $probe + '. Continuing anyway.')
+    }
+}
+
+# ---- 4. final warning ----
 Write-Host ''
+Write-Host ('Auth mode: ' + $mode) -ForegroundColor Cyan
 Write-Host '>>> About to irreversibly delete the repos above. Press Ctrl+C within 10 seconds to cancel. <<<' -ForegroundColor Magenta
 Start-Sleep -Seconds 10
 
-# ---- 4a. gh mode ----
-if (-not $UseAPI) {
-    if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
-        Write-Warning 'gh CLI not found. Falling back to REST API.'
-    } else {
-        try {
-            gh auth status | Out-Null
-        } catch {
-            Write-Host 'gh is not logged in. Run:  gh auth login' -ForegroundColor Yellow
-        }
-        Write-Host 'If delete fails with 403, first run:  gh auth refresh -s delete_repo' -ForegroundColor Yellow
-
-        foreach ($repo in $DeleteList) {
-            $full = "$Owner/$repo"
-            Write-Host ('=> DELETE ' + $full) -ForegroundColor Cyan
-            gh repo delete $full --yes
-            if ($LASTEXITCODE -ne 0) {
-                Write-Warning "Delete failed: $full (missing delete_repo scope / web confirmation / repo might not exist)."
-            } else {
-                Write-Host '   deleted' -ForegroundColor DarkGray
-            }
-        }
-        return
-    }
-}
-
-# ---- 4b. REST API mode ----
-$token = $env:GH_TOKEN
-if (-not $token) { $token = $env:GITHUB_TOKEN }
-if (-not $token) {
-    throw 'REST API mode needs $env:GH_TOKEN or $env:GITHUB_TOKEN. Or use gh mode (remove -UseAPI).'
-}
-
-$headers = @{
-    'Authorization' = "token $token"
-    'Accept'        = 'application/vnd.github+json'
-    'User-Agent'    = 'powershell-delete-archived'
-}
+# ---- 5. delete ----
+$okList   = @()
+$failList = @()
 
 foreach ($repo in $DeleteList) {
-    $uri = "https://api.github.com/repos/$Owner/$repo"
-    Write-Host ('=> DELETE ' + $uri) -ForegroundColor Cyan
-    try {
-        Invoke-RestMethod -Method Delete -Uri $uri -Headers $headers | Out-Null
-        Write-Host '   deleted' -ForegroundColor DarkGray
-    } catch {
-        $detail = $_.ErrorDetails.Message
-        Write-Warning "Delete failed for $repo : $detail"
-        if ($detail -match 'https://github.com/settings/connections/') {
-            Write-Host '   Open that URL and confirm deletion authorization, then rerun.' -ForegroundColor Yellow
+    $full = "$Owner/$repo"
+    Write-Host ('=> DELETE ' + $full) -ForegroundColor Cyan
+
+    if ($mode -eq 'gh') {
+        $eapSave = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        $ghOut = (gh repo delete $full --yes 2>&1 | Out-String)
+        $ghCode = $LASTEXITCODE
+        $ErrorActionPreference = $eapSave
+        if ($ghCode -eq 0) {
+            Write-Host '   deleted' -ForegroundColor DarkGray
+            $okList += $repo
+        } else {
+            if ($ghOut -match 'Could not resolve|404|not found') {
+                Write-Host '   already gone (404)' -ForegroundColor DarkGray
+                $okList += $repo
+                continue
+            }
+            Write-Warning ("Delete failed: $full -- " + $ghOut.Trim())
+            Write-Host '   If this is a scope error, run:  gh auth refresh -s delete_repo' -ForegroundColor Yellow
+            $failList += $repo
+        }
+    } else {
+        try {
+            Invoke-RestMethod -Method Delete -Uri "https://api.github.com/repos/$Owner/$repo" -Headers $headers -UserAgent $UA | Out-Null
+            Write-Host '   deleted' -ForegroundColor DarkGray
+            $okList += $repo
+        } catch {
+            $code = $null
+            if ($_.Exception.Response) { $code = [int]$_.Exception.Response.StatusCode }
+            $detail = $_.ErrorDetails.Message
+            if ($code -eq 404) {
+                Write-Host '   already gone (404)' -ForegroundColor DarkGray
+                $okList += $repo
+            } else {
+                Write-Warning ("Delete failed for $repo (HTTP $code): $detail")
+                if ($detail -match 'https://github.com/settings/connections/') {
+                    Write-Host '   Open that URL, authorize deletion, then rerun.' -ForegroundColor Yellow
+                }
+                $failList += $repo
+            }
         }
     }
 }
 
+# ---- 6. verify: confirm each repo is really gone ----
+Write-Host ''
+Write-Host '== Verifying deletions ==' -ForegroundColor Yellow
+$stillThere = @()
+foreach ($repo in $DeleteList) {
+    $exists = $false
+    if ($mode -eq 'gh') {
+        # use gh so private repos are checked with real credentials
+        $eapSave = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        $null = gh api "repos/$Owner/$repo" 2>&1
+        if ($LASTEXITCODE -eq 0) { $exists = $true }
+        $ErrorActionPreference = $eapSave
+    } else {
+        $vh = @{ 'Accept' = 'application/vnd.github+json'; 'Authorization' = "token $token" }
+        try {
+            Invoke-RestMethod -Uri "https://api.github.com/repos/$Owner/$repo" -Headers $vh -UserAgent $UA | Out-Null
+            $exists = $true
+        } catch { $exists = $false }
+    }
+    if ($exists) {
+        Write-Host ('  {0,-28} STILL EXISTS' -f $repo) -ForegroundColor Red
+        $stillThere += $repo
+    } else {
+        Write-Host ('  {0,-28} gone' -f $repo) -ForegroundColor Green
+    }
+}
+
+# ---- 7. summary ----
+Write-Host ''
+Write-Host '================ SUMMARY ================' -ForegroundColor Cyan
+Write-Host ('  requested : ' + $DeleteList.Count)
+Write-Host ('  deleted   : ' + $okList.Count) -ForegroundColor Green
+if ($failList.Count -gt 0) {
+    Write-Host ('  failed    : ' + $failList.Count) -ForegroundColor Red
+    Write-Host ('    ' + ($failList -join ', ')) -ForegroundColor Red
+}
+if ($stillThere.Count -gt 0) {
+    Write-Host ('  still up  : ' + ($stillThere -join ', ')) -ForegroundColor Red
+} else {
+    Write-Host '  all target repos confirmed gone.' -ForegroundColor Green
+}
+Write-Host 'Protected (untouched): ai, wendang11, turbine-blade-ai-platform, 123, wode, yiming' -ForegroundColor DarkGray
 Write-Host ''
 Write-Host 'Done.' -ForegroundColor Green

@@ -28,6 +28,8 @@ class Handler(BaseHTTPRequestHandler):
     db: Database
     config: Config
     embedder: EmbeddingClient
+    MAX_BODY = 1_048_576
+    MAX_TEXT = 100_000
 
     def _json(self, value: object, code: int = 200) -> None:
         body = json.dumps(value, ensure_ascii=False).encode()
@@ -39,33 +41,70 @@ class Handler(BaseHTTPRequestHandler):
             body = HTML.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body); return
         if parsed.path == "/health": self._json({"ok": True, **self.db.stats()}); return
         if parsed.path in ("/search", "/tools/search"):
-            q = parse_qs(parsed.query); rows = self.db.search_hybrid(q.get("q", [""])[0], limit=int(q.get("limit", [8])[0]), repo=q.get("repo", [None])[0], branch=q.get("branch", [None])[0]); self._json({"results": rows}); return
+            q = parse_qs(parsed.query); rows = self.db.search_hybrid(q.get("q", [""])[0], limit=self._limit(q.get("limit", [8])[0]), repo=q.get("repo", [None])[0], branch=q.get("branch", [None])[0]); self._json({"results": rows}); return
         if parsed.path in ("/find", "/tools/find"):
-            q = parse_qs(parsed.query); rows = self.db.find_documents(q.get("path", [""])[0], q.get("repo", [None])[0], q.get("branch", [None])[0], int(q.get("limit", [50])[0])); self._json({"results": rows}); return
+            q = parse_qs(parsed.query); rows = self.db.find_documents(q.get("path", [""])[0], q.get("repo", [None])[0], q.get("branch", [None])[0], self._limit(q.get("limit", [50])[0], 50)); self._json({"results": rows}); return
         if parsed.path.startswith("/read/") or parsed.path.startswith("/tools/read/"):
-            document_id = int(parsed.path.rstrip("/").split("/")[-1]); row = self.db.read_document(document_id); self._json(row or {"error": "not found"}, 200 if row else 404); return
+            try:
+                document_id = int(parsed.path.rstrip("/").split("/")[-1])
+            except ValueError:
+                self._json({"error": "invalid document id"}, 400); return
+            row = self.db.read_document(document_id); self._json(row or {"error": "not found"}, 200 if row else 404); return
         if parsed.path == "/memory/pending": self._json({"memories": self.db.pending_memories()}); return
         if parsed.path == "/conflicts":
             q = parse_qs(parsed.query); self._json({"conflicts": self.db.conflicts(q.get("repo", [None])[0])}); return
         if parsed.path == "/relations":
-            q = parse_qs(parsed.query); self._json({"relations": self.db.relations(int(q.get("document_id", [0])[0]))}); return
+            q = parse_qs(parsed.query)
+            try:
+                document_id = int(q.get("document_id", [0])[0])
+            except ValueError:
+                self._json({"error": "invalid document id"}, 400); return
+            self._json({"relations": self.db.relations(document_id)}); return
         self._json({"error": "not found"}, 404)
 
     def do_POST(self) -> None:
-        length = int(self.headers.get("Content-Length", "0")); raw = self.rfile.read(length) if length else b"{}"
-        data = json.loads(raw or b"{}")
-        if self.path in ("/search", "/tools/search"):
-            self._json({"results": self.db.search_hybrid(data.get("q", ""), limit=int(data.get("limit", 8)), repo=data.get("repo"), branch=data.get("branch"))}); return
-        if self.path == "/chat":
-            self._json(chat(self.db, self.config.llm, data.get("message", ""), int(data.get("limit", 8)), data.get("repo"), data.get("branch"), self.embedder)); return
-        if self.path == "/ingest": self._json(ingest(self.config, self.db)); return
-        if self.path == "/memory/propose":
-            self._json({"id": self.db.propose_memory(data.get("text", ""), data.get("source", ""), data.get("confidence"))}); return
-        if self.path == "/relations":
-            self._json({"id": self.db.add_relation(int(data["from_document_id"]), int(data["to_document_id"]), data["relation_type"], data.get("note", ""), data.get("valid_from"), data.get("valid_until"))}); return
-        if self.path.startswith("/memory/") and self.path.endswith("/approve"):
-            memory_id = int(self.path.split("/")[2]); self._json({"ok": self.db.review_memory(memory_id, bool(data.get("approve")))}); return
-        self._json({"error": "not found"}, 404)
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            if length < 0 or length > self.MAX_BODY:
+                self._json({"error": "request body too large"}, 413); return
+            raw = self.rfile.read(length) if length else b"{}"
+            data = json.loads(raw or b"{}")
+            if not isinstance(data, dict):
+                self._json({"error": "JSON object required"}, 400); return
+        except (ValueError, UnicodeDecodeError, json.JSONDecodeError):
+            self._json({"error": "invalid JSON"}, 400); return
+        try:
+            if self.path in ("/search", "/tools/search"):
+                q = data.get("q", "")
+                if not isinstance(q, str) or len(q) > self.MAX_TEXT:
+                    self._json({"error": "query too long or invalid"}, 400); return
+                self._json({"results": self.db.search_hybrid(q, limit=self._limit(data.get("limit", 8)), repo=data.get("repo"), branch=data.get("branch"))}); return
+            if self.path == "/chat":
+                message = data.get("message", "")
+                if not isinstance(message, str) or not message.strip() or len(message) > self.MAX_TEXT:
+                    self._json({"error": "message too long or empty"}, 400); return
+                self._json(chat(self.db, self.config.llm, message, self._limit(data.get("limit", 8)), data.get("repo"), data.get("branch"), self.embedder)); return
+            if self.path == "/ingest": self._json(ingest(self.config, self.db)); return
+            if self.path == "/memory/propose":
+                text = data.get("text", "")
+                if not isinstance(text, str) or not text.strip() or len(text) > self.MAX_TEXT:
+                    self._json({"error": "memory text too long or empty"}, 400); return
+                self._json({"id": self.db.propose_memory(text, data.get("source", ""), data.get("confidence"))}); return
+            if self.path == "/relations":
+                self._json({"id": self.db.add_relation(int(data["from_document_id"]), int(data["to_document_id"]), data["relation_type"], data.get("note", ""), data.get("valid_from"), data.get("valid_until"))}); return
+            if self.path.startswith("/memory/") and self.path.endswith("/approve"):
+                memory_id = int(self.path.split("/")[2]); self._json({"ok": self.db.review_memory(memory_id, bool(data.get("approve")))}); return
+            self._json({"error": "not found"}, 404)
+        except (KeyError, TypeError, ValueError):
+            self._json({"error": "invalid request"}, 400)
+        except Exception:
+            self._json({"error": "internal error"}, 500)
+
+    def _limit(self, value: object, default: int = 8) -> int:
+        try:
+            return max(1, min(100, int(value)))
+        except (TypeError, ValueError):
+            return default
 
     def log_message(self, *_: object) -> None: return
 

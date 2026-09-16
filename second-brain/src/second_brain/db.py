@@ -252,6 +252,16 @@ class Database:
         return [dict(row) for row in rows]
 
     def add_relation(self, from_id: int, to_id: int, relation_type: str, note: str = "", valid_from: str | None = None, valid_until: str | None = None) -> int:
+        allowed = {"supports", "contradicts", "supersedes", "derived_from"}
+        if from_id == to_id:
+            raise ValueError("a relation cannot point to itself")
+        if relation_type not in allowed:
+            raise ValueError("invalid relation type")
+        if valid_from and valid_until and valid_from > valid_until:
+            raise ValueError("valid_from must not be after valid_until")
+        exists = self.conn.execute("SELECT 1 FROM documents WHERE id IN (?,?)", (from_id, to_id)).fetchall()
+        if len(exists) != 2:
+            raise ValueError("both relation documents must exist")
         cur = self.conn.execute(
             "INSERT OR IGNORE INTO relations(from_document_id,to_document_id,relation_type,note,valid_from,valid_until) VALUES(?,?,?,?,?,?)",
             (from_id, to_id, relation_type, note, valid_from, valid_until),

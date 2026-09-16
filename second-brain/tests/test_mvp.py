@@ -44,11 +44,17 @@ class MvpTest(unittest.TestCase):
             a = {**base, "branch": "main", "content_hash": "a", "content": "old"}
             b = {**base, "branch": "arena/test", "content_hash": "b", "content": "new"}
             da = db.replace_document(a, chunk_text(a["content"], 100, 0))
-            db.replace_document(b, chunk_text(b["content"], 100, 0))
+            db_id = db.replace_document(b, chunk_text(b["content"], 100, 0))
             self.assertEqual(len(db.conflicts("demo")), 1)
-            relation_id = db.add_relation(da, da, "supersedes")
+            relation_id = db.add_relation(db_id, da, "supersedes")
             self.assertGreater(relation_id, 0)
             self.assertEqual(db.relations(da)[0]["relation_type"], "supersedes")
+
+    def test_relation_validation(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "db.sqlite3")
+            with self.assertRaises(ValueError):
+                db.add_relation(1, 1, "unknown")
 
     def test_reingest_replaces_stale_path(self):
         with tempfile.TemporaryDirectory() as tmp:

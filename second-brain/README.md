@@ -15,7 +15,10 @@ Obsidian-first、local-first、branch-aware 的个人知识系统 MVP。
 - 证据包：回答上下文中保留来源、分支、commit、路径和行号
 - 严格回答规则：无证据时 abstain；事实、推断、建议分开
 - 候选记忆审批：模型不能直接写入长期记忆
-- 本地 HTTP API 与极简浏览器界面
+- 跨分支冲突检测与 `supports / contradicts / supersedes / derived_from` 关系
+- 时间字段：`valid_from / valid_until`
+- 本地 HTTP API 与极简浏览器界面（含记忆审核、冲突查看）
+- 固定评测集与 `second-brain eval` 命令
 - 端到端验收测试（引用、无证据拒答、分支元数据）
 
 ## 设计边界

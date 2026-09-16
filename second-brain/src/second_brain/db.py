@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS documents (
   content_hash TEXT NOT NULL,
   content TEXT NOT NULL,
   updated_at TEXT,
+  valid_from TEXT,
+  valid_until TEXT,
   indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS chunks (
@@ -49,6 +51,8 @@ CREATE TABLE IF NOT EXISTS relations (
   to_document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
   relation_type TEXT NOT NULL,
   note TEXT,
+  valid_from TEXT,
+  valid_until TEXT,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(from_document_id, to_document_id, relation_type)
 );
@@ -81,7 +85,15 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.executescript(SCHEMA)
+        self._ensure_columns("documents", {"valid_from": "TEXT", "valid_until": "TEXT"})
+        self._ensure_columns("relations", {"valid_from": "TEXT", "valid_until": "TEXT"})
         self.conn.commit()
+
+    def _ensure_columns(self, table: str, columns: dict[str, str]) -> None:
+        existing = {row[1] for row in self.conn.execute(f"PRAGMA table_info({table})")}
+        for name, kind in columns.items():
+            if name not in existing:
+                self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {name} {kind}")
 
     def close(self) -> None:
         self.conn.close()
@@ -93,10 +105,12 @@ class Database:
         ).fetchone()
         if old:
             return int(old["id"])
+        doc.setdefault("valid_from", None)
+        doc.setdefault("valid_until", None)
         cur = self.conn.execute(
             """INSERT INTO documents
-            (source_type,source_name,repo,branch,commit_sha,path,title,content_hash,content,updated_at)
-            VALUES (:source_type,:source_name,:repo,:branch,:commit_sha,:path,:title,:content_hash,:content,:updated_at)""",
+            (source_type,source_name,repo,branch,commit_sha,path,title,content_hash,content,updated_at,valid_from,valid_until)
+            VALUES (:source_type,:source_name,:repo,:branch,:commit_sha,:path,:title,:content_hash,:content,:updated_at,:valid_from,:valid_until)""", 
             doc,
         )
         doc_id = int(cur.lastrowid)
@@ -214,10 +228,10 @@ class Database:
         ).fetchall()
         return [dict(row) for row in rows]
 
-    def add_relation(self, from_id: int, to_id: int, relation_type: str, note: str = "") -> int:
+    def add_relation(self, from_id: int, to_id: int, relation_type: str, note: str = "", valid_from: str | None = None, valid_until: str | None = None) -> int:
         cur = self.conn.execute(
-            "INSERT OR IGNORE INTO relations(from_document_id,to_document_id,relation_type,note) VALUES(?,?,?,?)",
-            (from_id, to_id, relation_type, note),
+            "INSERT OR IGNORE INTO relations(from_document_id,to_document_id,relation_type,note,valid_from,valid_until) VALUES(?,?,?,?,?,?)",
+            (from_id, to_id, relation_type, note, valid_from, valid_until),
         )
         self.conn.commit()
         if cur.lastrowid: return int(cur.lastrowid)

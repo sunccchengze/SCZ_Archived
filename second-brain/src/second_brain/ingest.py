@@ -9,6 +9,7 @@ from typing import Iterator
 
 from .config import Config
 from .db import Database
+from .embedding import EmbeddingClient
 
 
 @dataclass
@@ -125,6 +126,7 @@ def ingest(config: Config, db: Database) -> dict[str, int]:
             if (path / ".git").exists():
                 yield from iter_git(path, config)
 
+    embedder = EmbeddingClient(config.embedding)
     for item in sources():
         stats["seen"] += 1
         digest = hashlib.sha256(item.content.encode("utf-8")).hexdigest()
@@ -142,7 +144,9 @@ def ingest(config: Config, db: Database) -> dict[str, int]:
         }
         try:
             before = db.stats()["documents"]
-            db.replace_document(doc, chunk_text(item.content, config.chunk_chars, config.chunk_overlap))
+            chunks = chunk_text(item.content, config.chunk_chars, config.chunk_overlap)
+            vectors = embedder.embed([str(chunk["content"]) for chunk in chunks]) if embedder.enabled else None
+            db.replace_document(doc, chunks, vectors=vectors, embedding_model=config.embedding.model)
             stats["indexed"] += int(db.stats()["documents"] > before)
         except Exception:
             stats["errors"] += 1

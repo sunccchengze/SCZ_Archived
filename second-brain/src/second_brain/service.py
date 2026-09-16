@@ -6,6 +6,7 @@ from typing import Any
 
 from .config import LLMConfig
 from .db import Database
+from .embedding import EmbeddingClient
 
 
 SYSTEM_PROMPT = """你是孙承泽的本地第二大脑。严格遵守：
@@ -40,8 +41,9 @@ def citation(row: dict[str, Any]) -> dict[str, Any]:
     return {k: row.get(k) for k in ("source_type", "source_name", "repo", "branch", "commit_sha", "path", "start_line", "end_line", "rank")}
 
 
-def chat(db: Database, config: LLMConfig, question: str, limit: int = 8, repo: str | None = None, branch: str | None = None) -> dict[str, Any]:
-    rows = db.search(question, limit=limit, repo=repo, branch=branch)
+def chat(db: Database, config: LLMConfig, question: str, limit: int = 8, repo: str | None = None, branch: str | None = None, embedder: EmbeddingClient | None = None) -> dict[str, Any]:
+    query_vector = embedder.embed([question])[0] if embedder and embedder.enabled else None
+    rows = db.search_hybrid(question, query_vector=query_vector, limit=limit, repo=repo, branch=branch)
     if not config.base_url or not config.model:
         return fallback_answer(question, rows)
     if not rows:

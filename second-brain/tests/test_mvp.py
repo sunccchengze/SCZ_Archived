@@ -25,6 +25,18 @@ class MvpTest(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0]["path"], "research.md")
 
+    def test_hybrid_vector_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "db.sqlite3")
+            chunks = chunk_text("研究叶轮机械", 100, 0)
+            db.replace_document({
+                "source_type": "vault", "source_name": "vault", "repo": "", "branch": "",
+                "commit_sha": "", "path": "a.md", "title": "a", "content_hash": "a",
+                "content": "研究叶轮机械", "updated_at": "",
+            }, chunks, vectors=[[1.0, 0.0]], embedding_model="test")
+            rows = db.search_hybrid("完全不同的问法", query_vector=[1.0, 0.0])
+            self.assertEqual(rows[0]["path"], "a.md")
+
     def test_no_evidence_abstains(self):
         with tempfile.TemporaryDirectory() as tmp:
             db = Database(Path(tmp) / "db.sqlite3")

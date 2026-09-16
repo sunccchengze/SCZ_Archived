@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 from .config import Config
 from .db import Database
 from .ingest import ingest
+from .embedding import EmbeddingClient
 from .service import chat
 
 
@@ -23,6 +24,7 @@ async function ingestNow(){let r=await fetch('/ingest',{method:'POST'});document
 class Handler(BaseHTTPRequestHandler):
     db: Database
     config: Config
+    embedder: EmbeddingClient
 
     def _json(self, value: object, code: int = 200) -> None:
         body = json.dumps(value, ensure_ascii=False).encode()
@@ -42,7 +44,7 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", "0")); raw = self.rfile.read(length) if length else b"{}"
         data = json.loads(raw or b"{}")
         if self.path == "/chat":
-            self._json(chat(self.db, self.config.llm, data.get("message", ""), int(data.get("limit", 8)), data.get("repo"), data.get("branch"))); return
+            self._json(chat(self.db, self.config.llm, data.get("message", ""), int(data.get("limit", 8)), data.get("repo"), data.get("branch"), self.embedder)); return
         if self.path == "/ingest": self._json(ingest(self.config, self.db)); return
         if self.path == "/memory/propose":
             self._json({"id": self.db.propose_memory(data.get("text", ""), data.get("source", ""), data.get("confidence"))}); return
@@ -55,5 +57,5 @@ class Handler(BaseHTTPRequestHandler):
 
 def serve(config: Config, host: str = "127.0.0.1", port: int = 8787) -> None:
     db = Database(config.database)
-    Handler.db = db; Handler.config = config
+    Handler.db = db; Handler.config = config; Handler.embedder = EmbeddingClient(config.embedding)
     ThreadingHTTPServer((host, port), Handler).serve_forever()

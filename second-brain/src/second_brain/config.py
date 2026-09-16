@@ -15,6 +15,14 @@ class LLMConfig:
 
 
 @dataclass
+class EmbeddingConfig:
+    base_url: str = ""
+    api_key: str = ""
+    model: str = ""
+    timeout_seconds: int = 120
+
+
+@dataclass
 class Config:
     database: str = "data/second-brain.sqlite3"
     paths: list[str] = field(default_factory=list)
@@ -24,12 +32,14 @@ class Config:
     chunk_chars: int = 2400
     chunk_overlap: int = 300
     llm: LLMConfig = field(default_factory=LLMConfig)
+    embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
 
     @classmethod
     def from_file(cls, path: str | Path) -> "Config":
         raw: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
         llm = LLMConfig(**raw.pop("llm", {}))
-        return cls(llm=llm, **raw)
+        embedding = EmbeddingConfig(**raw.pop("embedding", {}))
+        return cls(llm=llm, embedding=embedding, **raw)
 
     def resolve_path(self, value: str) -> Path:
         return Path(value).expanduser().resolve()
@@ -48,6 +58,12 @@ def write_example(path: str | Path) -> None:
             "base_url": "",
             "api_key": "",
             "model": "deepseek-chat",
+            "timeout_seconds": 120,
+        },
+        "embedding": {
+            "base_url": "",
+            "api_key": "",
+            "model": "",
             "timeout_seconds": 120,
         },
     }

@@ -8,6 +8,7 @@ Obsidian-first、local-first、branch-aware 的个人知识系统 MVP。
 - Git 仓库全部本地 refs 摄取（`main` 与 `arena/*`，保留 repo、branch、commit、path）
 - SQLite 持久化：来源、文档、分块、索引任务、候选记忆
 - FTS5 BM25 关键词检索；不依赖向量库也能工作
+- 可选 OpenAI-compatible embedding + cosine hybrid retrieval
 - DeepSeek / OpenAI-compatible 生成接口
 - 元数据过滤：repo、branch、path、source_type
 - 证据包：回答上下文中保留来源、分支、commit、路径和行号
@@ -18,7 +19,7 @@ Obsidian-first、local-first、branch-aware 的个人知识系统 MVP。
 
 ## 设计边界
 
-这是第一阶段的后端 MVP，不替代 Obsidian 编辑器，也不默认修改 Vault。原始 Markdown 是事实主存储；SQLite 是可重建的索引和状态层。向量检索、reranker、时间事实图谱会在 lexical + provenance 通过验收后加入。
+这是第一阶段的后端 MVP，不替代 Obsidian 编辑器，也不默认修改 Vault。原始 Markdown 是事实主存储；SQLite 是可重建的索引和状态层。当前已支持可选 embedding hybrid retrieval；reranker、时间事实图谱和 Obsidian 插件会在本阶段验收后加入。
 
 ## 快速开始
 
@@ -57,7 +58,7 @@ python -m second_brain serve --config second-brain.json --host 127.0.0.1 --port 
 
 如果未配置 LLM，`/search` 仍可用；`/chat` 会返回带证据的检索结果，而不会假装已经生成回答。
 
-当前第一阶段使用 BM25 + 中文 substring fallback，保证本地可用和可调试；独立 embedding 与 reranker 接口将在 lexical/provenance 验收后加入，不会拿 DeepSeek 生成模型冒充 embedding 模型。
+没有配置 embedding 时使用 BM25 + 中文 substring fallback；配置 OpenAI-compatible embedding 后，摄取阶段保存向量，查询阶段使用 BM25 + cosine 的 hybrid retrieval。不会拿 DeepSeek 生成模型冒充 embedding 模型。
 
 ## API
 

@@ -5,6 +5,8 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Iterable
 
+from .embedding import cosine
+
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -33,6 +35,12 @@ CREATE TABLE IF NOT EXISTS chunks (
 );
 CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
   content, path, title, repo, branch, content='chunks', content_rowid='id'
+);
+CREATE TABLE IF NOT EXISTS embeddings (
+  chunk_id INTEGER PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
+  model TEXT NOT NULL,
+  vector TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS memories (
   id INTEGER PRIMARY KEY,
@@ -68,7 +76,7 @@ class Database:
     def close(self) -> None:
         self.conn.close()
 
-    def replace_document(self, doc: dict[str, Any], chunks: Iterable[dict[str, Any]]) -> int:
+    def replace_document(self, doc: dict[str, Any], chunks: Iterable[dict[str, Any]], vectors: list[list[float]] | None = None, embedding_model: str = "") -> int:
         old = self.conn.execute(
             "SELECT id FROM documents WHERE source_name=? AND repo=? AND branch=? AND path=? AND content_hash=?",
             (doc["source_name"], doc.get("repo", ""), doc.get("branch", ""), doc["path"], doc["content_hash"]),
@@ -88,9 +96,15 @@ class Database:
         self.conn.executemany(
             "INSERT INTO chunks(document_id,ordinal,start_line,end_line,content) VALUES(?,?,?,?,?)", rows
         )
-        for chunk_id, content in self.conn.execute(
+        chunk_rows = self.conn.execute(
             "SELECT id,content FROM chunks WHERE document_id=? ORDER BY ordinal", (doc_id,)
-        ).fetchall():
+        ).fetchall()
+        if vectors and embedding_model:
+            self.conn.executemany(
+                "INSERT OR REPLACE INTO embeddings(chunk_id,model,vector) VALUES(?,?,?)",
+                [(row["id"], embedding_model, json.dumps(vector)) for row, vector in zip(chunk_rows, vectors)],
+            )
+        for chunk_id, content in chunk_rows:
             self.conn.execute(
                 "INSERT INTO chunks_fts(rowid,content,path,title,repo,branch) VALUES(?,?,?,?,?,?)",
                 (chunk_id, content, doc["path"], doc["title"], doc.get("repo") or "", doc.get("branch") or ""),
@@ -134,6 +148,28 @@ class Database:
             ).fetchall()
             rows = fallback
         return [dict(r) for r in rows]
+
+    def search_hybrid(self, query: str, query_vector: list[float] | None = None, limit: int = 8, repo: str | None = None, branch: str | None = None) -> list[dict[str, Any]]:
+        lexical = self.search(query, limit=max(limit * 3, 20), repo=repo, branch=branch)
+        if not query_vector:
+            return lexical[:limit]
+        clauses = []
+        args: list[Any] = []
+        if repo: clauses.append("d.repo=?"); args.append(repo)
+        if branch: clauses.append("d.branch=?"); args.append(branch)
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+        vector_rows = self.conn.execute(
+            f"""SELECT c.id,c.content,c.start_line,c.end_line,d.source_type,d.source_name,d.repo,d.branch,d.commit_sha,d.path,d.title,e.vector
+                FROM embeddings e JOIN chunks c ON c.id=e.chunk_id JOIN documents d ON d.id=c.document_id {where}""", args
+        ).fetchall()
+        scored = sorted(((cosine(query_vector, json.loads(row["vector"])), dict(row)) for row in vector_rows), key=lambda x: x[0], reverse=True)[:limit * 3]
+        merged: dict[int, dict[str, Any]] = {}
+        for rank, row in enumerate(lexical, 1):
+            merged[row["id"]] = {**row, "hybrid_score": 1 / (60 + rank)}
+        for rank, (score, row) in enumerate(scored, 1):
+            current = merged.setdefault(row["id"], {**row, "rank": 0})
+            current["hybrid_score"] = current.get("hybrid_score", 0) + 1 / (60 + rank) + max(score, 0) * 0.05
+        return sorted(merged.values(), key=lambda x: x.get("hybrid_score", 0), reverse=True)[:limit]
 
     def propose_memory(self, text: str, source: str = "", confidence: float | None = None) -> int:
         cur = self.conn.execute(

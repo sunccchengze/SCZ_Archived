@@ -1,0 +1,163 @@
+from __future__ import annotations
+
+import json
+import sqlite3
+from pathlib import Path
+from typing import Any, Iterable
+
+
+SCHEMA = """
+PRAGMA journal_mode=WAL;
+CREATE TABLE IF NOT EXISTS documents (
+  id INTEGER PRIMARY KEY,
+  source_type TEXT NOT NULL,
+  source_name TEXT NOT NULL,
+  repo TEXT,
+  branch TEXT,
+  commit_sha TEXT,
+  path TEXT NOT NULL,
+  title TEXT,
+  content_hash TEXT NOT NULL,
+  content TEXT NOT NULL,
+  updated_at TEXT,
+  indexed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS chunks (
+  id INTEGER PRIMARY KEY,
+  document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  ordinal INTEGER NOT NULL,
+  start_line INTEGER NOT NULL,
+  end_line INTEGER NOT NULL,
+  content TEXT NOT NULL,
+  UNIQUE(document_id, ordinal)
+);
+CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
+  content, path, title, repo, branch, content='chunks', content_rowid='id'
+);
+CREATE TABLE IF NOT EXISTS memories (
+  id INTEGER PRIMARY KEY,
+  text TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'pending',
+  source TEXT,
+  confidence REAL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at TEXT
+);
+CREATE TABLE IF NOT EXISTS ingest_runs (
+  id INTEGER PRIMARY KEY,
+  source_name TEXT NOT NULL,
+  started_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  finished_at TEXT,
+  documents_seen INTEGER DEFAULT 0,
+  documents_indexed INTEGER DEFAULT 0,
+  errors INTEGER DEFAULT 0
+);
+"""
+
+
+class Database:
+    def __init__(self, path: str | Path):
+        self.path = Path(path).expanduser()
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(self.path)
+        self.conn.row_factory = sqlite3.Row
+        self.conn.execute("PRAGMA foreign_keys=ON")
+        self.conn.executescript(SCHEMA)
+        self.conn.commit()
+
+    def close(self) -> None:
+        self.conn.close()
+
+    def replace_document(self, doc: dict[str, Any], chunks: Iterable[dict[str, Any]]) -> int:
+        old = self.conn.execute(
+            "SELECT id FROM documents WHERE source_name=? AND repo=? AND branch=? AND path=? AND content_hash=?",
+            (doc["source_name"], doc.get("repo", ""), doc.get("branch", ""), doc["path"], doc["content_hash"]),
+        ).fetchone()
+        if old:
+            return int(old["id"])
+        cur = self.conn.execute(
+            """INSERT INTO documents
+            (source_type,source_name,repo,branch,commit_sha,path,title,content_hash,content,updated_at)
+            VALUES (:source_type,:source_name,:repo,:branch,:commit_sha,:path,:title,:content_hash,:content,:updated_at)""",
+            doc,
+        )
+        doc_id = int(cur.lastrowid)
+        rows = []
+        for c in chunks:
+            rows.append((doc_id, c["ordinal"], c["start_line"], c["end_line"], c["content"]))
+        self.conn.executemany(
+            "INSERT INTO chunks(document_id,ordinal,start_line,end_line,content) VALUES(?,?,?,?,?)", rows
+        )
+        for chunk_id, content in self.conn.execute(
+            "SELECT id,content FROM chunks WHERE document_id=? ORDER BY ordinal", (doc_id,)
+        ).fetchall():
+            self.conn.execute(
+                "INSERT INTO chunks_fts(rowid,content,path,title,repo,branch) VALUES(?,?,?,?,?,?)",
+                (chunk_id, content, doc["path"], doc["title"], doc.get("repo") or "", doc.get("branch") or ""),
+            )
+        self.conn.commit()
+        return doc_id
+
+    def search(self, query: str, limit: int = 8, repo: str | None = None, branch: str | None = None) -> list[dict[str, Any]]:
+        terms = " ".join(query.replace('"', " ").split())
+        if not terms:
+            return []
+        where = ["chunks_fts MATCH ?"]
+        args: list[Any] = [terms]
+        if repo:
+            where.append("d.repo=?"); args.append(repo)
+        if branch:
+            where.append("d.branch=?"); args.append(branch)
+        sql = f"""SELECT c.id,c.content,c.start_line,c.end_line,d.source_type,d.source_name,d.repo,
+                         d.branch,d.commit_sha,d.path,d.title,bm25(chunks_fts) AS rank
+                  FROM chunks_fts JOIN chunks c ON c.id=chunks_fts.rowid
+                  JOIN documents d ON d.id=c.document_id
+                  WHERE {' AND '.join(where)} ORDER BY rank LIMIT ?"""
+        args.append(limit)
+        rows = self.conn.execute(sql, args).fetchall()
+        # SQLite's default unicode tokenizer is intentionally conservative. For
+        # Chinese and exact project names, use a deterministic substring fallback
+        # rather than silently returning zero evidence.
+        if not rows:
+            clauses = ["d.content LIKE ?"]
+            fallback_args: list[Any] = [f"%{query}%"]
+            if repo:
+                clauses.append("d.repo=?"); fallback_args.append(repo)
+            if branch:
+                clauses.append("d.branch=?"); fallback_args.append(branch)
+            fallback = self.conn.execute(
+                f"""SELECT c.id,c.content,c.start_line,c.end_line,d.source_type,d.source_name,d.repo,
+                           d.branch,d.commit_sha,d.path,d.title,0.0 AS rank
+                    FROM chunks c JOIN documents d ON d.id=c.document_id
+                    WHERE {' AND '.join(clauses)} ORDER BY d.updated_at DESC LIMIT ?""",
+                (*fallback_args, limit),
+            ).fetchall()
+            rows = fallback
+        return [dict(r) for r in rows]
+
+    def propose_memory(self, text: str, source: str = "", confidence: float | None = None) -> int:
+        cur = self.conn.execute(
+            "INSERT INTO memories(text,status,source,confidence) VALUES(?,?,?,?)",
+            (text, "pending", source, confidence),
+        )
+        self.conn.commit()
+        return int(cur.lastrowid)
+
+    def pending_memories(self) -> list[dict[str, Any]]:
+        return [dict(r) for r in self.conn.execute("SELECT * FROM memories WHERE status='pending' ORDER BY id DESC")]
+
+    def review_memory(self, memory_id: int, approve: bool) -> bool:
+        status = "approved" if approve else "rejected"
+        cur = self.conn.execute(
+            "UPDATE memories SET status=?,reviewed_at=CURRENT_TIMESTAMP WHERE id=? AND status='pending'",
+            (status, memory_id),
+        )
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def stats(self) -> dict[str, int]:
+        return {
+            "documents": self.conn.execute("SELECT COUNT(*) FROM documents").fetchone()[0],
+            "chunks": self.conn.execute("SELECT COUNT(*) FROM chunks").fetchone()[0],
+            "pending_memories": self.conn.execute("SELECT COUNT(*) FROM memories WHERE status='pending'").fetchone()[0],
+        }

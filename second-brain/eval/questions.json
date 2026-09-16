@@ -1,0 +1,26 @@
+[
+  {
+    "id": "personal-research",
+    "question": "我的当前科研主线是什么？请区分事实、推断和未知，并给出来源。",
+    "must_cite": true,
+    "must_abstain": false
+  },
+  {
+    "id": "branch-aware",
+    "question": "SCZ_Archived 的知识是否只能从 main 判断？",
+    "must_cite": true,
+    "must_abstain": false
+  },
+  {
+    "id": "unknown",
+    "question": "我的账号里是否明确记录了我最喜欢的火星殖民方案？",
+    "must_cite": false,
+    "must_abstain": true
+  },
+  {
+    "id": "project-status",
+    "question": "哪些研究材料不能被直接描述成已发表成果？",
+    "must_cite": true,
+    "must_abstain": false
+  }
+]

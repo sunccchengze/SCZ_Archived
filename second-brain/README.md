@@ -9,6 +9,7 @@ Obsidian-first、local-first、branch-aware 的个人知识系统 MVP。
 - SQLite 持久化：来源、文档、分块、索引任务、候选记忆
 - FTS5 BM25 关键词检索；不依赖向量库也能工作
 - 可选 OpenAI-compatible embedding + cosine hybrid retrieval
+- 保守查询分解与轻量 reranker
 - DeepSeek / OpenAI-compatible 生成接口
 - 元数据过滤：repo、branch、path、source_type
 - 证据包：回答上下文中保留来源、分支、commit、路径和行号
@@ -63,7 +64,9 @@ python -m second_brain serve --config second-brain.json --host 127.0.0.1 --port 
 ## API
 
 - `GET /health`
-- `GET /search?q=...&limit=8&repo=...&branch=...`
+- `GET /find?path=...&repo=...&branch=...`：文件元数据查找
+- `GET /search?q=...&limit=8&repo=...&branch=...`：混合检索
+- `GET /read/{document_id}`：读取完整文档及分块来源
 - `POST /chat`：`{"message":"...","limit":8}`
 - `POST /memory/propose`：创建候选记忆
 - `GET /memory/pending`

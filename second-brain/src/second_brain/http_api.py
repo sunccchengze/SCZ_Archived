@@ -35,8 +35,12 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/":
             body = HTML.encode(); self.send_response(200); self.send_header("Content-Type", "text/html; charset=utf-8"); self.send_header("Content-Length", str(len(body))); self.end_headers(); self.wfile.write(body); return
         if parsed.path == "/health": self._json({"ok": True, **self.db.stats()}); return
-        if parsed.path == "/search":
-            q = parse_qs(parsed.query); rows = self.db.search(q.get("q", [""])[0], int(q.get("limit", [8])[0]), q.get("repo", [None])[0], q.get("branch", [None])[0]); self._json({"results": rows}); return
+        if parsed.path in ("/search", "/tools/search"):
+            q = parse_qs(parsed.query); rows = self.db.search_hybrid(q.get("q", [""])[0], limit=int(q.get("limit", [8])[0]), repo=q.get("repo", [None])[0], branch=q.get("branch", [None])[0]); self._json({"results": rows}); return
+        if parsed.path in ("/find", "/tools/find"):
+            q = parse_qs(parsed.query); rows = self.db.find_documents(q.get("path", [""])[0], q.get("repo", [None])[0], q.get("branch", [None])[0], int(q.get("limit", [50])[0])); self._json({"results": rows}); return
+        if parsed.path.startswith("/read/") or parsed.path.startswith("/tools/read/"):
+            document_id = int(parsed.path.rstrip("/").split("/")[-1]); row = self.db.read_document(document_id); self._json(row or {"error": "not found"}, 200 if row else 404); return
         if parsed.path == "/memory/pending": self._json({"memories": self.db.pending_memories()}); return
         self._json({"error": "not found"}, 404)
 

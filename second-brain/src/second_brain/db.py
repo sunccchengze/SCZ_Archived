@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from .embedding import cosine
+from .retrieval import query_variants, rerank
 
 
 SCHEMA = """
@@ -150,9 +151,13 @@ class Database:
         return [dict(r) for r in rows]
 
     def search_hybrid(self, query: str, query_vector: list[float] | None = None, limit: int = 8, repo: str | None = None, branch: str | None = None) -> list[dict[str, Any]]:
-        lexical = self.search(query, limit=max(limit * 3, 20), repo=repo, branch=branch)
+        lexical_by_id: dict[int, dict[str, Any]] = {}
+        for variant in query_variants(query):
+            for row in self.search(variant, limit=max(limit * 3, 20), repo=repo, branch=branch):
+                lexical_by_id[row["id"]] = row
+        lexical = list(lexical_by_id.values())
         if not query_vector:
-            return lexical[:limit]
+            return rerank(query, lexical, limit)
         clauses = []
         args: list[Any] = []
         if repo: clauses.append("d.repo=?"); args.append(repo)
@@ -169,7 +174,25 @@ class Database:
         for rank, (score, row) in enumerate(scored, 1):
             current = merged.setdefault(row["id"], {**row, "rank": 0})
             current["hybrid_score"] = current.get("hybrid_score", 0) + 1 / (60 + rank) + max(score, 0) * 0.05
-        return sorted(merged.values(), key=lambda x: x.get("hybrid_score", 0), reverse=True)[:limit]
+        return rerank(query, list(merged.values()), limit)
+
+    def find_documents(self, path_prefix: str = "", repo: str | None = None, branch: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+        clauses = ["1=1"]; args: list[Any] = []
+        if path_prefix: clauses.append("path LIKE ?"); args.append(path_prefix.rstrip("/") + "%")
+        if repo: clauses.append("repo=?"); args.append(repo)
+        if branch: clauses.append("branch=?"); args.append(branch)
+        rows = self.conn.execute(
+            f"SELECT id,source_type,source_name,repo,branch,commit_sha,path,title,updated_at FROM documents WHERE {' AND '.join(clauses)} ORDER BY path LIMIT ?",
+            (*args, limit),
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def read_document(self, document_id: int) -> dict[str, Any] | None:
+        row = self.conn.execute("SELECT * FROM documents WHERE id=?", (document_id,)).fetchone()
+        if not row: return None
+        result = dict(row)
+        result["chunks"] = [dict(chunk) for chunk in self.conn.execute("SELECT ordinal,start_line,end_line,content FROM chunks WHERE document_id=? ORDER BY ordinal", (document_id,))]
+        return result
 
     def propose_memory(self, text: str, source: str = "", confidence: float | None = None) -> int:
         cur = self.conn.execute(

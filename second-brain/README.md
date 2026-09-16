@@ -71,6 +71,9 @@ python -m second_brain serve --config second-brain.json --host 127.0.0.1 --port 
 - `POST /memory/propose`：创建候选记忆
 - `GET /memory/pending`
 - `POST /memory/{id}/approve`
+- `GET /conflicts?repo=...`：同一路径跨分支内容冲突
+- `GET /relations?document_id=...`
+- `POST /relations`：建立 `supersedes / contradicts / derived_from / supports` 关系
 - `POST /ingest`
 
 ## 安全默认值

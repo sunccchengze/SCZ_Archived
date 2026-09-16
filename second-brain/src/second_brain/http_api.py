@@ -42,6 +42,10 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path.startswith("/read/") or parsed.path.startswith("/tools/read/"):
             document_id = int(parsed.path.rstrip("/").split("/")[-1]); row = self.db.read_document(document_id); self._json(row or {"error": "not found"}, 200 if row else 404); return
         if parsed.path == "/memory/pending": self._json({"memories": self.db.pending_memories()}); return
+        if parsed.path == "/conflicts":
+            q = parse_qs(parsed.query); self._json({"conflicts": self.db.conflicts(q.get("repo", [None])[0])}); return
+        if parsed.path == "/relations":
+            q = parse_qs(parsed.query); self._json({"relations": self.db.relations(int(q.get("document_id", [0])[0]))}); return
         self._json({"error": "not found"}, 404)
 
     def do_POST(self) -> None:
@@ -52,6 +56,8 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/ingest": self._json(ingest(self.config, self.db)); return
         if self.path == "/memory/propose":
             self._json({"id": self.db.propose_memory(data.get("text", ""), data.get("source", ""), data.get("confidence"))}); return
+        if self.path == "/relations":
+            self._json({"id": self.db.add_relation(int(data["from_document_id"]), int(data["to_document_id"]), data["relation_type"], data.get("note", ""))}); return
         if self.path.startswith("/memory/") and self.path.endswith("/approve"):
             memory_id = int(self.path.split("/")[2]); self._json({"ok": self.db.review_memory(memory_id, bool(data.get("approve")))}); return
         self._json({"error": "not found"}, 404)

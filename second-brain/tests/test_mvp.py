@@ -37,6 +37,19 @@ class MvpTest(unittest.TestCase):
             rows = db.search_hybrid("完全不同的问法", query_vector=[1.0, 0.0])
             self.assertEqual(rows[0]["path"], "a.md")
 
+    def test_conflicts_and_relations(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "db.sqlite3")
+            base = {"source_type": "git", "source_name": "demo", "repo": "demo", "commit_sha": "x", "path": "README.md", "title": "README", "updated_at": ""}
+            a = {**base, "branch": "main", "content_hash": "a", "content": "old"}
+            b = {**base, "branch": "arena/test", "content_hash": "b", "content": "new"}
+            da = db.replace_document(a, chunk_text(a["content"], 100, 0))
+            db.replace_document(b, chunk_text(b["content"], 100, 0))
+            self.assertEqual(len(db.conflicts("demo")), 1)
+            relation_id = db.add_relation(da, da, "supersedes")
+            self.assertGreater(relation_id, 0)
+            self.assertEqual(db.relations(da)[0]["relation_type"], "supersedes")
+
     def test_no_evidence_abstains(self):
         with tempfile.TemporaryDirectory() as tmp:
             db = Database(Path(tmp) / "db.sqlite3")

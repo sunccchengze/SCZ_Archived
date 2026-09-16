@@ -43,6 +43,15 @@ CREATE TABLE IF NOT EXISTS embeddings (
   vector TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+CREATE TABLE IF NOT EXISTS relations (
+  id INTEGER PRIMARY KEY,
+  from_document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  to_document_id INTEGER NOT NULL REFERENCES documents(id) ON DELETE CASCADE,
+  relation_type TEXT NOT NULL,
+  note TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(from_document_id, to_document_id, relation_type)
+);
 CREATE TABLE IF NOT EXISTS memories (
   id INTEGER PRIMARY KEY,
   text TEXT NOT NULL,
@@ -193,6 +202,36 @@ class Database:
         result = dict(row)
         result["chunks"] = [dict(chunk) for chunk in self.conn.execute("SELECT ordinal,start_line,end_line,content FROM chunks WHERE document_id=? ORDER BY ordinal", (document_id,))]
         return result
+
+    def conflicts(self, repo: str | None = None) -> list[dict[str, Any]]:
+        clauses = ["d1.path=d2.path", "d1.id < d2.id", "d1.content_hash != d2.content_hash", "d1.branch != d2.branch"]
+        args: list[Any] = []
+        if repo: clauses.append("d1.repo=?"); args.append(repo)
+        rows = self.conn.execute(
+            f"""SELECT d1.path,d1.repo,d1.branch AS branch_a,d1.commit_sha AS commit_a,
+                      d2.branch AS branch_b,d2.commit_sha AS commit_b,d1.id AS document_a,d2.id AS document_b
+               FROM documents d1 JOIN documents d2 ON {' AND '.join(clauses)} ORDER BY d1.path""", args
+        ).fetchall()
+        return [dict(row) for row in rows]
+
+    def add_relation(self, from_id: int, to_id: int, relation_type: str, note: str = "") -> int:
+        cur = self.conn.execute(
+            "INSERT OR IGNORE INTO relations(from_document_id,to_document_id,relation_type,note) VALUES(?,?,?,?)",
+            (from_id, to_id, relation_type, note),
+        )
+        self.conn.commit()
+        if cur.lastrowid: return int(cur.lastrowid)
+        row = self.conn.execute("SELECT id FROM relations WHERE from_document_id=? AND to_document_id=? AND relation_type=?", (from_id, to_id, relation_type)).fetchone()
+        return int(row["id"])
+
+    def relations(self, document_id: int) -> list[dict[str, Any]]:
+        rows = self.conn.execute(
+            """SELECT r.*,d.path,d.repo,d.branch FROM relations r JOIN documents d ON d.id=r.to_document_id
+               WHERE r.from_document_id=? UNION ALL
+               SELECT r.*,d.path,d.repo,d.branch FROM relations r JOIN documents d ON d.id=r.from_document_id
+               WHERE r.to_document_id=?""", (document_id, document_id)
+        ).fetchall()
+        return [dict(row) for row in rows]
 
     def propose_memory(self, text: str, source: str = "", confidence: float | None = None) -> int:
         cur = self.conn.execute(

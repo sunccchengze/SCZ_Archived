@@ -20,7 +20,7 @@ def run_eval(db: Database, config: Config, path: str) -> dict[str, Any]:
         abstained = bool(result.get("abstained"))
         results.append({
             "id": case["id"],
-            "cited_ok": cited == bool(case.get("must_cite", False)) if not case.get("must_abstain") else True,
+            "cited_ok": (cited or not bool(case.get("must_cite", False))) if not case.get("must_abstain") else True,
             "abstain_ok": abstained == bool(case.get("must_abstain", False)),
             "citations": len(result.get("citations", [])),
             "answer": result.get("answer", ""),

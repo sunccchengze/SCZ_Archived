@@ -50,6 +50,21 @@ class MvpTest(unittest.TestCase):
             self.assertGreater(relation_id, 0)
             self.assertEqual(db.relations(da)[0]["relation_type"], "supersedes")
 
+    def test_reingest_replaces_stale_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "db.sqlite3")
+            base = {"source_type": "vault", "source_name": "vault", "repo": "", "branch": "", "path": "note.md", "title": "note", "updated_at": ""}
+            db.replace_document({**base, "content_hash": "old", "content": "旧内容"}, chunk_text("旧内容", 100, 0))
+            db.replace_document({**base, "content_hash": "new", "content": "新内容"}, chunk_text("新内容", 100, 0))
+            self.assertEqual(db.stats()["documents"], 1)
+            self.assertEqual(len(db.search("旧内容")), 0)
+            self.assertEqual(len(db.search("新内容")), 1)
+
+    def test_fts_operator_is_safe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Database(Path(tmp) / "db.sqlite3")
+            self.assertEqual(db.search('"unclosed OR *'), [])
+
     def test_no_evidence_abstains(self):
         with tempfile.TemporaryDirectory() as tmp:
             db = Database(Path(tmp) / "db.sqlite3")

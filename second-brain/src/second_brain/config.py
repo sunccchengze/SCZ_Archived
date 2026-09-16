@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -37,8 +38,16 @@ class Config:
     @classmethod
     def from_file(cls, path: str | Path) -> "Config":
         raw: dict[str, Any] = json.loads(Path(path).read_text(encoding="utf-8"))
-        llm = LLMConfig(**raw.pop("llm", {}))
-        embedding = EmbeddingConfig(**raw.pop("embedding", {}))
+        llm_raw = raw.pop("llm", {})
+        llm_raw["base_url"] = llm_raw.get("base_url") or os.getenv("SCZ_LLM_BASE_URL", "")
+        llm_raw["api_key"] = llm_raw.get("api_key") or os.getenv("SCZ_LLM_API_KEY", "")
+        llm_raw["model"] = llm_raw.get("model") or os.getenv("SCZ_LLM_MODEL", "")
+        embedding_raw = raw.pop("embedding", {})
+        embedding_raw["base_url"] = embedding_raw.get("base_url") or os.getenv("SCZ_EMBED_BASE_URL", "")
+        embedding_raw["api_key"] = embedding_raw.get("api_key") or os.getenv("SCZ_EMBED_API_KEY", "")
+        embedding_raw["model"] = embedding_raw.get("model") or os.getenv("SCZ_EMBED_MODEL", "")
+        llm = LLMConfig(**llm_raw)
+        embedding = EmbeddingConfig(**embedding_raw)
         return cls(llm=llm, embedding=embedding, **raw)
 
     def resolve_path(self, value: str) -> Path:

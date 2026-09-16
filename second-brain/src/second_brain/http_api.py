@@ -54,6 +54,8 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length", "0")); raw = self.rfile.read(length) if length else b"{}"
         data = json.loads(raw or b"{}")
+        if self.path in ("/search", "/tools/search"):
+            self._json({"results": self.db.search_hybrid(data.get("q", ""), limit=int(data.get("limit", 8)), repo=data.get("repo"), branch=data.get("branch"))}); return
         if self.path == "/chat":
             self._json(chat(self.db, self.config.llm, data.get("message", ""), int(data.get("limit", 8)), data.get("repo"), data.get("branch"), self.embedder)); return
         if self.path == "/ingest": self._json(ingest(self.config, self.db)); return

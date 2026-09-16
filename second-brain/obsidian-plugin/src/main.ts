@@ -59,7 +59,7 @@ export default class SCZSecondBrainPlugin extends Plugin {
   }
   async searchCurrentNote(file: TFile): Promise<void> {
     const content = await this.app.vault.read(file);
-    const response = await requestUrl({ url: `${this.settings.backendUrl.replace(/\/$/, "")}/search?q=${encodeURIComponent(content.slice(0, 1200))}&limit=8` });
+    const response = await requestUrl({ url: `${this.settings.backendUrl.replace(/\/$/, "")}/search`, method: "POST", body: JSON.stringify({ q: content.slice(0, 4000), limit: 8 }), headers: { "Content-Type": "application/json" } });
     const result = response.json as { results: SearchRow[] };
     new Notice(`找到 ${result.results.length} 条相关来源；使用命令“Ask SCZ Second Brain”查看完整回答。`);
   }

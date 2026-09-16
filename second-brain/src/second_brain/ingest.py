@@ -114,8 +114,8 @@ def iter_git(repo: Path, config: Config) -> Iterator[SourceFile]:
             )
 
 
-def ingest(config: Config, db: Database) -> dict[str, int]:
-    stats = {"seen": 0, "indexed": 0, "errors": 0}
+def ingest(config: Config, db: Database) -> dict[str, object]:
+    stats: dict[str, object] = {"seen": 0, "indexed": 0, "errors": 0, "error_paths": []}
     def sources() -> Iterator[SourceFile]:
         for value in config.paths:
             path = config.resolve_path(value)
@@ -148,6 +148,9 @@ def ingest(config: Config, db: Database) -> dict[str, int]:
             vectors = embedder.embed([str(chunk["content"]) for chunk in chunks]) if embedder.enabled else None
             db.replace_document(doc, chunks, vectors=vectors, embedding_model=config.embedding.model)
             stats["indexed"] += int(db.stats()["documents"] > before)
-        except Exception:
+        except Exception as exc:
             stats["errors"] += 1
+            error_paths = stats["error_paths"]
+            if isinstance(error_paths, list) and len(error_paths) < 20:
+                error_paths.append({"source": item.source_name, "path": item.path, "error": str(exc)})
     return stats

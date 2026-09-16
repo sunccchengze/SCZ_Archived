@@ -36,9 +36,7 @@ CREATE TABLE IF NOT EXISTS chunks (
   content TEXT NOT NULL,
   UNIQUE(document_id, ordinal)
 );
-CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(
-  content, path, title, repo, branch, content='chunks', content_rowid='id'
-);
+CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5(content, path, title, repo, branch);
 CREATE TABLE IF NOT EXISTS embeddings (
   chunk_id INTEGER PRIMARY KEY REFERENCES chunks(id) ON DELETE CASCADE,
   model TEXT NOT NULL,
@@ -85,9 +83,19 @@ class Database:
         self.conn.row_factory = sqlite3.Row
         self.conn.execute("PRAGMA foreign_keys=ON")
         self.conn.executescript(SCHEMA)
+        self._ensure_fts_table()
         self._ensure_columns("documents", {"valid_from": "TEXT", "valid_until": "TEXT"})
         self._ensure_columns("relations", {"valid_from": "TEXT", "valid_until": "TEXT"})
         self.conn.commit()
+
+    def _ensure_fts_table(self) -> None:
+        row = self.conn.execute("SELECT sql FROM sqlite_master WHERE name='chunks_fts'").fetchone()
+        if row and row[0] and "content='chunks'" in row[0]:
+            self.conn.execute("DROP TABLE chunks_fts")
+            self.conn.execute("CREATE VIRTUAL TABLE chunks_fts USING fts5(content, path, title, repo, branch)")
+            self.conn.execute("""INSERT INTO chunks_fts(rowid,content,path,title,repo,branch)
+                SELECT c.id,c.content,d.path,d.title,COALESCE(d.repo,''),COALESCE(d.branch,'')
+                FROM chunks c JOIN documents d ON d.id=c.document_id""")
 
     def _ensure_columns(self, table: str, columns: dict[str, str]) -> None:
         existing = {row[1] for row in self.conn.execute(f"PRAGMA table_info({table})")}
@@ -99,12 +107,18 @@ class Database:
         self.conn.close()
 
     def replace_document(self, doc: dict[str, Any], chunks: Iterable[dict[str, Any]], vectors: list[list[float]] | None = None, embedding_model: str = "") -> int:
+        identity = (doc["source_name"], doc.get("repo", ""), doc.get("branch", ""), doc["path"])
         old = self.conn.execute(
-            "SELECT id FROM documents WHERE source_name=? AND repo=? AND branch=? AND path=? AND content_hash=?",
-            (doc["source_name"], doc.get("repo", ""), doc.get("branch", ""), doc["path"], doc["content_hash"]),
+            "SELECT id,content_hash FROM documents WHERE source_name=? AND repo=? AND branch=? AND path=?",
+            identity,
         ).fetchone()
-        if old:
+        if old and old["content_hash"] == doc["content_hash"]:
             return int(old["id"])
+        if old:
+            self.conn.execute("DELETE FROM chunks_fts WHERE rowid IN (SELECT id FROM chunks WHERE document_id=?)", (old["id"],))
+            self.conn.execute("DELETE FROM documents WHERE id=?", (old["id"],))
+        for field in ("repo", "branch", "commit_sha", "updated_at"):
+            doc.setdefault(field, "")
         doc.setdefault("valid_from", None)
         doc.setdefault("valid_until", None)
         cur = self.conn.execute(
@@ -152,7 +166,11 @@ class Database:
                   JOIN documents d ON d.id=c.document_id
                   WHERE {' AND '.join(where)} ORDER BY rank LIMIT ?"""
         args.append(limit)
-        rows = self.conn.execute(sql, args).fetchall()
+        try:
+            rows = self.conn.execute(sql, args).fetchall()
+        except sqlite3.OperationalError:
+            # User text is not allowed to break search through FTS operators.
+            rows = []
         # SQLite's default unicode tokenizer is intentionally conservative. For
         # Chinese and exact project names, use a deterministic substring fallback
         # rather than silently returning zero evidence.
@@ -190,7 +208,12 @@ class Database:
             f"""SELECT c.id,c.content,c.start_line,c.end_line,d.source_type,d.source_name,d.repo,d.branch,d.commit_sha,d.path,d.title,e.vector
                 FROM embeddings e JOIN chunks c ON c.id=e.chunk_id JOIN documents d ON d.id=c.document_id {where}""", args
         ).fetchall()
-        scored = sorted(((cosine(query_vector, json.loads(row["vector"])), dict(row)) for row in vector_rows), key=lambda x: x[0], reverse=True)[:limit * 3]
+        scored = []
+        for row in vector_rows:
+            clean = dict(row)
+            clean.pop("vector", None)
+            scored.append((cosine(query_vector, json.loads(row["vector"])), clean))
+        scored = sorted(scored, key=lambda x: x[0], reverse=True)[:limit * 3]
         merged: dict[int, dict[str, Any]] = {}
         for rank, row in enumerate(lexical, 1):
             merged[row["id"]] = {**row, "hybrid_score": 1 / (60 + rank)}

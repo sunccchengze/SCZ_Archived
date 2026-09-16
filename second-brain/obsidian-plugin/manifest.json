@@ -1,0 +1,9 @@
+{
+  "id": "scz-second-brain",
+  "name": "SCZ Second Brain",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "Connect Obsidian to the local, branch-aware SCZ Second Brain backend.",
+  "author": "SCZ",
+  "isDesktopOnly": true
+}

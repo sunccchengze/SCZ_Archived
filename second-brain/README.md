@@ -64,6 +64,24 @@ python -m second_brain serve --config second-brain.json --host 127.0.0.1 --port 
 
 没有配置 embedding 时使用 BM25 + 中文 substring fallback；配置 OpenAI-compatible embedding 后，摄取阶段保存向量，查询阶段使用 BM25 + cosine 的 hybrid retrieval。不会拿 DeepSeek 生成模型冒充 embedding 模型。
 
+## Obsidian 插件
+
+`obsidian-plugin/` 是一个薄客户端，不复制知识、不拥有第二份事实库，只连接本地后端：
+
+1. 在 `second-brain/` 启动后端。
+2. 在 `obsidian-plugin/` 执行 `npm install && npm run build`。
+3. 将生成的 `main.js`、`manifest.json` 放到 Vault 的 `.obsidian/plugins/scz-second-brain/`。
+4. 在 Obsidian 启用插件，设置本地 backend URL。
+
+插件提供：
+
+- Ask SCZ Second Brain
+- 用当前笔记搜索相关来源
+- 展示仓库、分支、路径和行号
+- 将回答保存为 `Inbox` 草稿
+
+插件不会自动修改核心笔记，不会自动批准记忆；草稿必须人工整理。
+
 ## API
 
 - `GET /health`

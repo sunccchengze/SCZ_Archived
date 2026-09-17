@@ -66,6 +66,18 @@ class MvpTest(unittest.TestCase):
             self.assertEqual(len(db.search("旧内容")), 0)
             self.assertEqual(len(db.search("新内容")), 1)
 
+    def test_ingest_removes_deleted_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            vault = Path(tmp) / "vault"; vault.mkdir()
+            note = vault / "note.md"; note.write_text("会被删除", encoding="utf-8")
+            db = Database(Path(tmp) / "db.sqlite3")
+            cfg = Config(paths=[str(vault)], database=str(Path(tmp) / "db.sqlite3"))
+            ingest(cfg, db)
+            note.unlink()
+            result = ingest(cfg, db)
+            self.assertEqual(result["deleted"], 1)
+            self.assertEqual(db.stats()["documents"], 0)
+
     def test_fts_operator_is_safe(self):
         with tempfile.TemporaryDirectory() as tmp:
             db = Database(Path(tmp) / "db.sqlite3")

@@ -113,6 +113,10 @@ class Database:
             identity,
         ).fetchone()
         if old and old["content_hash"] == doc["content_hash"]:
+            if vectors and embedding_model:
+                chunk_rows = self.conn.execute("SELECT id FROM chunks WHERE document_id=? ORDER BY ordinal", (old["id"],)).fetchall()
+                self.conn.executemany("INSERT OR REPLACE INTO embeddings(chunk_id,model,vector) VALUES(?,?,?)", [(row["id"], embedding_model, json.dumps(vector)) for row, vector in zip(chunk_rows, vectors)])
+                self.conn.commit()
             return int(old["id"])
         if old:
             self.conn.execute("DELETE FROM chunks_fts WHERE rowid IN (SELECT id FROM chunks WHERE document_id=?)", (old["id"],))
@@ -222,6 +226,15 @@ class Database:
             current["hybrid_score"] = current.get("hybrid_score", 0) + 1 / (60 + rank) + max(score, 0) * 0.05
         return rerank(query, list(merged.values()), limit)
 
+    def reconcile_source(self, source_type: str, source_name: str, repo: str, branch: str, seen_paths: set[str]) -> int:
+        rows = self.conn.execute("SELECT id,path FROM documents WHERE source_type=? AND source_name=? AND repo=? AND branch=?", (source_type, source_name, repo, branch)).fetchall()
+        stale = [row["id"] for row in rows if row["path"] not in seen_paths]
+        for document_id in stale:
+            self.conn.execute("DELETE FROM chunks_fts WHERE rowid IN (SELECT id FROM chunks WHERE document_id=?)", (document_id,))
+            self.conn.execute("DELETE FROM documents WHERE id=?", (document_id,))
+        self.conn.commit()
+        return len(stale)
+
     def find_documents(self, path_prefix: str = "", repo: str | None = None, branch: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
         clauses = ["1=1"]; args: list[Any] = []
         if path_prefix: clauses.append("path LIKE ?"); args.append(path_prefix.rstrip("/") + "%")
@@ -270,6 +283,18 @@ class Database:
         if cur.lastrowid: return int(cur.lastrowid)
         row = self.conn.execute("SELECT id FROM relations WHERE from_document_id=? AND to_document_id=? AND relation_type=?", (from_id, to_id, relation_type)).fetchone()
         return int(row["id"])
+
+    def update_relation(self, relation_id: int, note: str | None = None, valid_from: str | None = None, valid_until: str | None = None) -> bool:
+        if valid_from and valid_until and valid_from > valid_until:
+            raise ValueError("valid_from must not be after valid_until")
+        cur = self.conn.execute("UPDATE relations SET note=COALESCE(?,note),valid_from=?,valid_until=? WHERE id=?", (note, valid_from, valid_until, relation_id))
+        self.conn.commit()
+        return cur.rowcount == 1
+
+    def delete_relation(self, relation_id: int) -> bool:
+        cur = self.conn.execute("DELETE FROM relations WHERE id=?", (relation_id,))
+        self.conn.commit()
+        return cur.rowcount == 1
 
     def relations(self, document_id: int) -> list[dict[str, Any]]:
         rows = self.conn.execute(

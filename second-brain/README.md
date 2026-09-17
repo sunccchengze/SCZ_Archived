@@ -23,7 +23,7 @@ Obsidian-first、local-first、branch-aware 的个人知识系统 MVP。
 
 ## 设计边界
 
-这是第一阶段的后端 MVP，不替代 Obsidian 编辑器，也不默认修改 Vault。原始 Markdown 是事实主存储；SQLite 是可重建的索引和状态层。当前已支持可选 embedding hybrid retrieval；reranker、时间事实图谱和 Obsidian 插件会在本阶段验收后加入。
+这是本地优先的后端 MVP，不替代 Obsidian 编辑器，也不默认修改 Vault。原始 Markdown 是事实主存储；SQLite 是可重建的索引和状态层。当前已支持可选 embedding hybrid retrieval、关系审核和 Obsidian 插件。每次成功扫描会清理已删除的来源文件；扫描出现错误时不会删除旧索引。
 
 ## 快速开始
 
@@ -94,7 +94,9 @@ python -m second_brain serve --config second-brain.json --host 127.0.0.1 --port 
 - `POST /memory/{id}/approve`
 - `GET /conflicts?repo=...`：同一路径跨分支内容冲突
 - `GET /relations?document_id=...`
-- `POST /relations`：建立 `supersedes / contradicts / derived_from / supports` 关系
+- `POST /relations`：建立 `supersedes / contradicts / derived_from / supports` 关系；禁止自指和不存在的文档
+- `PUT /relations/{id}`：更新备注和有效时间
+- `DELETE /relations/{id}`：删除关系
 - `POST /ingest`
 
 ## 安全默认值

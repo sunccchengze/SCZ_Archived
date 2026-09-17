@@ -22,6 +22,7 @@ class SourceFile:
     branch: str = ""
     commit_sha: str = ""
     updated_at: str = ""
+    error: str = ""
 
 
 def chunk_text(text: str, size: int, overlap: int) -> list[dict[str, object]]:
@@ -61,7 +62,8 @@ def iter_path(path: Path, config: Config) -> Iterator[SourceFile]:
             continue
         try:
             text = file.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        except (UnicodeDecodeError, OSError) as exc:
+            yield SourceFile(source_type="vault", source_name=str(path), path=str(file.relative_to(path)), content="", error=str(exc))
             continue
         stat = file.stat()
         yield SourceFile(
@@ -127,8 +129,26 @@ def ingest(config: Config, db: Database) -> dict[str, object]:
                 yield from iter_git(path, config)
 
     embedder = EmbeddingClient(config.embedding)
+    seen: dict[tuple[str, str, str, str], set[str]] = {}
+    for value in config.paths:
+        path = config.resolve_path(value)
+        if path.exists():
+            seen.setdefault(("vault", str(path), "", ""), set())
+    for value in config.repositories:
+        path = config.resolve_path(value)
+        if (path / ".git").exists():
+            for branch, _ in git_refs(path):
+                seen.setdefault(("git", path.name, path.name, branch), set())
     for item in sources():
         stats["seen"] += 1
+        if item.error:
+            stats["errors"] += 1
+            error_paths = stats["error_paths"]
+            if isinstance(error_paths, list) and len(error_paths) < 20:
+                error_paths.append({"source": item.source_name, "path": item.path, "error": item.error})
+            continue
+        key = (item.source_type, item.source_name, item.repo, item.branch)
+        seen.setdefault(key, set()).add(item.path)
         digest = hashlib.sha256(item.content.encode("utf-8")).hexdigest()
         doc = {
             "source_type": item.source_type,
@@ -153,4 +173,11 @@ def ingest(config: Config, db: Database) -> dict[str, object]:
             error_paths = stats["error_paths"]
             if isinstance(error_paths, list) and len(error_paths) < 20:
                 error_paths.append({"source": item.source_name, "path": item.path, "error": str(exc)})
+    # Only reconcile a source after a clean scan. A read/model failure must not
+    # make an existing document disappear from the searchable evidence.
+    if stats["errors"] == 0:
+        for (source_type, source_name, repo, branch), paths in seen.items():
+            stats["deleted"] = stats.get("deleted", 0) + db.reconcile_source(source_type, source_name, repo, branch, paths)
+    else:
+        stats["deleted"] = 0
     return stats

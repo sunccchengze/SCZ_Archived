@@ -100,6 +100,29 @@ class Handler(BaseHTTPRequestHandler):
         except Exception:
             self._json({"error": "internal error"}, 500)
 
+    def do_DELETE(self) -> None:
+        if self.path.startswith("/relations/"):
+            try:
+                relation_id = int(self.path.split("/")[-1])
+            except ValueError:
+                self._json({"error": "invalid relation id"}, 400); return
+            self._json({"ok": self.db.delete_relation(relation_id)}); return
+        self._json({"error": "not found"}, 404)
+
+    def do_PUT(self) -> None:
+        if not self.path.startswith("/relations/"):
+            self._json({"error": "not found"}, 404); return
+        try:
+            relation_id = int(self.path.split("/")[-1])
+            length = int(self.headers.get("Content-Length", "0"))
+            if length < 0 or length > self.MAX_BODY:
+                self._json({"error": "request body too large"}, 413); return
+            data = json.loads(self.rfile.read(length) or b"{}")
+            if not isinstance(data, dict): raise ValueError
+            self._json({"ok": self.db.update_relation(relation_id, data.get("note"), data.get("valid_from"), data.get("valid_until"))})
+        except (ValueError, TypeError, json.JSONDecodeError):
+            self._json({"error": "invalid request"}, 400)
+
     def _limit(self, value: object, default: int = 8) -> int:
         try:
             return max(1, min(100, int(value)))
